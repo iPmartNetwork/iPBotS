@@ -989,52 +989,43 @@ show_menu() {
         else
             echo -e "  Status: ${RED}● Stopped${NC}"
         fi
-        echo ""
+    else
+        echo -e "  Status: ${YELLOW}● Not Installed${NC}"
     fi
+    echo ""
 
     echo -e "  ${BOLD}Select an option:${NC}"
     echo ""
-
-    if [ "$installed" = false ]; then
-        echo -e "    ${GREEN}1)${NC} 🚀 Install iPBotS"
-    else
-        echo -e "    ${GREEN}1)${NC} 🔄 Update"
-        echo -e "    ${GREEN}2)${NC} 📊 Status"
-        echo -e "    ${GREEN}3)${NC} 🔁 Restart"
-        echo -e "    ${GREEN}4)${NC} 📋 View Logs"
-        echo -e "    ${GREEN}5)${NC} 💾 Backup Database"
-        echo -e "    ${GREEN}6)${NC} ⚙️  Reconfigure"
-        echo -e "    ${GREEN}7)${NC} 🌱 Seed Database"
-        echo -e "    ${GREEN}8)${NC} ⏹️  Stop Services"
-        echo -e "    ${GREEN}9)${NC} ▶️  Start Services"
-        echo -e "    ${RED}10)${NC} 🗑️  Uninstall"
-    fi
+    echo -e "    ${GREEN}1)${NC}  🚀 Install (Fresh)"
+    echo -e "    ${GREEN}2)${NC}  🔄 Update"
+    echo -e "    ${GREEN}3)${NC}  📊 Status"
+    echo -e "    ${GREEN}4)${NC}  🔁 Restart"
+    echo -e "    ${GREEN}5)${NC}  📋 View Logs"
+    echo -e "    ${GREEN}6)${NC}  💾 Backup Database"
+    echo -e "    ${GREEN}7)${NC}  ⚙️  Reconfigure"
+    echo -e "    ${GREEN}8)${NC}  🌱 Seed Database"
+    echo -e "    ${GREEN}9)${NC}  ⏹️  Stop Services"
+    echo -e "    ${GREEN}10)${NC} ▶️  Start Services"
+    echo -e "    ${RED}11)${NC} 🗑️  Uninstall"
     echo -e "    ${YELLOW}0)${NC}  Exit"
     echo ""
     read -p "  ➤ " choice
 
-    if [ "$installed" = false ]; then
-        case $choice in
-            1) do_install ;;
-            0) exit 0 ;;
-            *) show_menu ;;
-        esac
-    else
-        case $choice in
-            1) do_update ;;
-            2) do_status ;;
-            3) cd "$INSTALL_DIR" && docker-compose restart && success "Restarted" ;;
-            4) cd "$INSTALL_DIR" && docker-compose logs -f --tail=50 bot ;;
-            5) do_backup ;;
-            6) configure_environment "force" && info "Run: ipbots restart" ;;
-            7) cd "$INSTALL_DIR" && docker-compose exec -T bot python -m core.database.seed ;;
-            8) cd "$INSTALL_DIR" && docker-compose down && success "Stopped" ;;
-            9) cd "$INSTALL_DIR" && docker-compose up -d && success "Started" ;;
-            10) do_uninstall ;;
-            0) exit 0 ;;
-            *) show_menu ;;
-        esac
-    fi
+    case $choice in
+        1) do_install ;;
+        2) do_update ;;
+        3) do_status ;;
+        4) cd "$INSTALL_DIR" 2>/dev/null && docker-compose restart && success "Restarted" || error "Not installed" ;;
+        5) cd "$INSTALL_DIR" 2>/dev/null && docker-compose logs -f --tail=50 bot || error "Not installed" ;;
+        6) do_backup ;;
+        7) cd "$INSTALL_DIR" 2>/dev/null && configure_environment "force" && info "Run: ipbots restart" || error "Not installed" ;;
+        8) cd "$INSTALL_DIR" 2>/dev/null && docker-compose exec -T bot python -m core.database.seed || error "Not installed" ;;
+        9) cd "$INSTALL_DIR" 2>/dev/null && docker-compose down && success "Stopped" || error "Not installed" ;;
+        10) cd "$INSTALL_DIR" 2>/dev/null && docker-compose up -d && success "Started" || error "Not installed" ;;
+        11) do_uninstall ;;
+        0) exit 0 ;;
+        *) show_menu ;;
+    esac
 }
 
 do_status() {
