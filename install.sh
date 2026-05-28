@@ -11,7 +11,7 @@
 set -euo pipefail
 
 # ─── Constants ────────────────────────────────────────────────
-readonly VERSION="1.0.0"
+readonly IPBOTS_VERSION="1.0.0"
 readonly INSTALL_DIR="/opt/iPBotS"
 readonly REPO_URL="https://github.com/iPmartNetwork/iPBotS.git"
 readonly BRANCH="master"
@@ -59,7 +59,7 @@ print_banner() {
     
 EOF
     echo -e "${NC}"
-    echo -e "    ${BOLD}V2Ray Shop Bot${NC} ${DIM}v${VERSION}${NC}"
+    echo -e "    ${BOLD}V2Ray Shop Bot${NC} ${DIM}v${IPBOTS_VERSION}${NC}"
     echo -e "    ${DIM}© iPmart Network | github.com/iPmartNetwork/iPBotS${NC}"
     echo -e ""
     echo -e "    ${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -120,29 +120,31 @@ check_os() {
         exit 1
     fi
 
-    . /etc/os-release
-    local os_name="$ID $VERSION_ID"
+    # Read os-release in a way that doesn't conflict with our readonly vars
+    local os_id=$(grep "^ID=" /etc/os-release | cut -d= -f2 | tr -d '"')
+    local os_version=$(grep "^VERSION_ID=" /etc/os-release | cut -d= -f2 | tr -d '"')
+    local os_pretty=$(grep "^PRETTY_NAME=" /etc/os-release | cut -d= -f2 | tr -d '"')
 
-    case "$ID" in
+    case "$os_id" in
         ubuntu)
-            if [[ ! "$VERSION_ID" =~ ^(20.04|22.04|24.04)$ ]]; then
-                warning "Ubuntu $VERSION_ID not officially tested"
+            if [[ ! "$os_version" =~ ^(20.04|22.04|24.04)$ ]]; then
+                warning "Ubuntu $os_version not officially tested"
             fi
             ;;
         debian)
-            if [[ ! "$VERSION_ID" =~ ^(11|12)$ ]]; then
-                warning "Debian $VERSION_ID not officially tested"
+            if [[ ! "$os_version" =~ ^(11|12)$ ]]; then
+                warning "Debian $os_version not officially tested"
             fi
             ;;
         *)
-            warning "OS '$ID' not officially supported"
+            warning "OS '$os_id' not officially supported"
             if ! confirm "Continue anyway?"; then
                 exit 1
             fi
             ;;
     esac
 
-    success "OS: $PRETTY_NAME"
+    success "OS: $os_pretty"
 }
 
 check_resources() {
@@ -910,7 +912,7 @@ asyncio.run(create_tables())
     health_check_final
 
     echo ""
-    success "Update complete! v$VERSION"
+    success "Update complete! v$IPBOTS_VERSION"
     echo ""
 }
 
@@ -1118,7 +1120,7 @@ case "${1:-}" in
     seed)       check_root; cd "$INSTALL_DIR" && docker-compose exec -T bot python -m core.database.seed ;;
     "")         check_root; show_menu ;;
     -h|--help|help)
-        echo "iPBotS v$VERSION - © iPmart Network"
+        echo "iPBotS v$IPBOTS_VERSION - © iPmart Network"
         echo "GitHub: https://github.com/iPmartNetwork/iPBotS"
         echo ""
         echo "Usage: bash install.sh [command]"
