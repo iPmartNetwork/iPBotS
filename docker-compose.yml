@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  bot:
+    build: .
+    container_name: v2ray-shop-bot
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./backups:/app/backups
+      - ./logs:/app/logs
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: v2ray-shop-db
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_NAME:-v2ray_shop}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: v2ray-shop-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

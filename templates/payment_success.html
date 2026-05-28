@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پرداخت موفق - iPmart Network</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Vazirmatn', 'Segoe UI', Tahoma, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+        }
+        .container {
+            text-align: center;
+            padding: 40px;
+            max-width: 400px;
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounce 0.6s ease;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 12px;
+            color: #00c853;
+        }
+        p {
+            font-size: 16px;
+            color: #a0a0a0;
+            margin-bottom: 8px;
+        }
+        .ref-id {
+            background: rgba(255,255,255,0.1);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin: 16px 0;
+            display: inline-block;
+        }
+        .btn {
+            display: inline-block;
+            margin-top: 24px;
+            padding: 14px 32px;
+            background: #6c63ff;
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        .btn:hover { transform: scale(1.05); }
+        .note {
+            margin-top: 20px;
+            font-size: 13px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">✅</div>
+        <h1>پرداخت موفق!</h1>
+        <p>پرداخت شما با موفقیت انجام شد.</p>
+        <p>سرویس شما به زودی فعال می‌شود.</p>
+
+        <div class="ref-id">
+            شماره پیگیری: {{ ref_id }}
+        </div>
+
+        <p>مبلغ: <strong>{{ amount }}</strong> تومان</p>
+
+        <a href="https://t.me/{{ bot_username }}" class="btn">
+            🤖 بازگشت به ربات
+        </a>
+
+        <p class="note">
+            این صفحه را می‌توانید ببندید.<br>
+            سرویس خودکار در ربات فعال می‌شود.
+        </p>
+    </div>
+</body>
+</html>

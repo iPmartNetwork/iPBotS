@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V2Ray Shop - iPmart Network</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="user-info">
+                <div class="avatar" id="userAvatar">👤</div>
+                <div class="user-details">
+                    <h3 id="userName">کاربر</h3>
+                    <span class="balance" id="userBalance">💰 0 تومان</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tabs">
+            <button class="tab active" data-tab="shop" onclick="switchTab('shop')">
+                🛒 فروشگاه
+            </button>
+            <button class="tab" data-tab="services" onclick="switchTab('services')">
+                📦 سرویس‌ها
+            </button>
+            <button class="tab" data-tab="wallet" onclick="switchTab('wallet')">
+                💰 کیف پول
+            </button>
+            <button class="tab" data-tab="profile" onclick="switchTab('profile')">
+                👤 حساب
+            </button>
+        </nav>
+
+        <!-- Shop Tab -->
+        <section id="tab-shop" class="tab-content active">
+            <!-- Trial Banner -->
+            <div class="trial-banner" id="trialBanner">
+                <div class="trial-icon">🎁</div>
+                <div class="trial-text">
+                    <strong>تست رایگان!</strong>
+                    <p>1 GB / 24 ساعت</p>
+                </div>
+                <button class="btn btn-trial" onclick="requestTrial()">دریافت</button>
+            </div>
+
+            <!-- Categories -->
+            <div class="section-title">📁 دسته‌بندی‌ها</div>
+            <div class="categories" id="categories">
+                <!-- Loaded dynamically -->
+            </div>
+
+            <!-- Plans -->
+            <div class="section-title" id="plansTitle" style="display:none;">📋 پلن‌ها</div>
+            <div class="plans" id="plans">
+                <!-- Loaded dynamically -->
+            </div>
+
+            <!-- Custom Plan -->
+            <div class="custom-plan-card" onclick="openCustomPlan()">
+                <div class="custom-icon">🛠️</div>
+                <div class="custom-text">
+                    <strong>پلن سفارشی</strong>
+                    <p>حجم و مدت دلخواه خودت رو بساز</p>
+                </div>
+                <div class="arrow">←</div>
+            </div>
+        </section>
+
+        <!-- Services Tab -->
+        <section id="tab-services" class="tab-content">
+            <div class="services-list" id="servicesList">
+                <div class="empty-state">
+                    <div class="empty-icon">📦</div>
+                    <p>سرویسی خریداری نشده</p>
+                    <button class="btn btn-primary" onclick="switchTab('shop')">خرید سرویس</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Wallet Tab -->
+        <section id="tab-wallet" class="tab-content">
+            <div class="wallet-card">
+                <div class="wallet-balance">
+                    <span class="label">موجودی</span>
+                    <span class="amount" id="walletBalance">0</span>
+                    <span class="currency">تومان</span>
+                </div>
+                <div class="wallet-actions">
+                    <button class="btn btn-success" onclick="chargeWallet()">➕ شارژ</button>
+                    <button class="btn btn-outline" onclick="withdrawWallet()">💸 برداشت</button>
+                </div>
+            </div>
+
+            <div class="section-title">📜 تراکنش‌ها</div>
+            <div class="transactions" id="transactions">
+                <!-- Loaded dynamically -->
+            </div>
+        </section>
+
+        <!-- Profile Tab -->
+        <section id="tab-profile" class="tab-content">
+            <div class="profile-card">
+                <div class="profile-avatar" id="profileAvatar">👤</div>
+                <h2 id="profileName">کاربر</h2>
+                <p class="profile-id" id="profileId">ID: ---</p>
+            </div>
+
+            <div class="profile-stats">
+                <div class="stat">
+                    <span class="stat-value" id="statPurchases">0</span>
+                    <span class="stat-label">خرید</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="statSpent">0</span>
+                    <span class="stat-label">هزینه (ت)</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="statReferrals">0</span>
+                    <span class="stat-label">زیرمجموعه</span>
+                </div>
+            </div>
+
+            <div class="profile-menu">
+                <div class="menu-item" onclick="showReferral()">
+                    <span>👥 زیرمجموعه‌گیری</span>
+                    <span class="arrow">←</span>
+                </div>
+                <div class="menu-item" onclick="showLoyalty()">
+                    <span>⭐ باشگاه مشتریان</span>
+                    <span class="arrow">←</span>
+                </div>
+                <div class="menu-item" onclick="showReseller()">
+                    <span>🏪 نمایندگی</span>
+                    <span class="arrow">←</span>
+                </div>
+                <div class="menu-item" onclick="showSupport()">
+                    <span>📞 پشتیبانی</span>
+                    <span class="arrow">←</span>
+                </div>
+                <div class="menu-item" onclick="showTutorial()">
+                    <span>📖 آموزش اتصال</span>
+                    <span class="arrow">←</span>
+                </div>
+                <div class="menu-item" onclick="changeLanguage()">
+                    <span>🌐 زبان</span>
+                    <span class="arrow">←</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="modal" style="display:none;">
+        <div class="modal-content" id="modalContent">
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
