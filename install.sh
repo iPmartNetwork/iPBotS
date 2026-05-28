@@ -238,20 +238,38 @@ install_docker() {
         success "Docker installed"
     fi
 
-    # Docker Compose
-    if command -v docker-compose &> /dev/null; then
-        success "Docker Compose available"
-    elif docker compose version &> /dev/null; then
-        # Docker Compose V2 (plugin)
-        alias docker-compose='docker compose'
-        success "Docker Compose V2 available"
+    # Docker Compose - check V2 plugin first, then standalone
+    if docker compose version &> /dev/null; then
+        success "Docker Compose V2 (plugin) available"
+        # Create alias script for compatibility
+        if [ ! -f /usr/local/bin/docker-compose ]; then
+            cat > /usr/local/bin/docker-compose << 'DCEOF'
+#!/bin/bash
+docker compose "$@"
+DCEOF
+            chmod +x /usr/local/bin/docker-compose
+        fi
+    elif command -v docker-compose &> /dev/null; then
+        success "Docker Compose (standalone) available"
     else
         info "Installing Docker Compose..."
-        local compose_ver=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-        curl -fsSL "https://github.com/docker/compose/releases/download/${compose_ver}/docker-compose-$(uname -s)-$(uname -m)" \
-            -o /usr/local/bin/docker-compose >> "$LOG_FILE" 2>&1
-        chmod +x /usr/local/bin/docker-compose
-        success "Docker Compose installed"
+        # Try plugin first
+        apt-get install -y -qq docker-compose-plugin >> "$LOG_FILE" 2>&1 && {
+            # Create compatibility wrapper
+            cat > /usr/local/bin/docker-compose << 'DCEOF'
+#!/bin/bash
+docker compose "$@"
+DCEOF
+            chmod +x /usr/local/bin/docker-compose
+            success "Docker Compose V2 plugin installed"
+        } || {
+            # Fallback to standalone binary
+            local compose_ver=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+            curl -fsSL "https://github.com/docker/compose/releases/download/${compose_ver}/docker-compose-$(uname -s)-$(uname -m)" \
+                -o /usr/local/bin/docker-compose >> "$LOG_FILE" 2>&1
+            chmod +x /usr/local/bin/docker-compose
+            success "Docker Compose standalone installed"
+        }
     fi
 }
 
