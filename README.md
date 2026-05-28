@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="img/iPBotS.png" alt="iPBotS Logo" width="200">
+  <img src="/img/iPBotS.svg" alt="BirdX" width="480" height="480" />
 </p>
-
-<h1 align="center">iPBotS</h1>
 
 <p align="center">
   <b>Professional V2Ray VPN Shop Telegram Bot</b><br>
