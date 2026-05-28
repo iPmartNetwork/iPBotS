@@ -21,7 +21,7 @@ class NotificationService:
         reply_markup: Optional[InlineKeyboardMarkup] = None,
     ):
         """Send notification to all admins."""
-        for admin_id in settings.ADMIN_IDS:
+        for admin_id in settings.admin_ids_list:
             try:
                 await self.bot.send_message(
                     admin_id, message, reply_markup=reply_markup

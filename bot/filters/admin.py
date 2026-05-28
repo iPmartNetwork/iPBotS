@@ -17,4 +17,4 @@ class AdminFilter(BaseFilter):
         else:
             return False
 
-        return user_id in settings.ADMIN_IDS
+        return user_id in settings.admin_ids_list

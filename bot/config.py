@@ -1,8 +1,7 @@
 """Bot configuration loaded from environment variables."""
 
-from typing import List, Optional
+from typing import Optional
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -15,9 +14,16 @@ class Settings(BaseSettings):
 
     # Telegram
     BOT_TOKEN: str
-    ADMIN_IDS: List[int] = []
+    ADMIN_IDS: str = ""
     BOT_USERNAME: str = ""
     SUPPORT_CHAT_ID: int = 0
+
+    @property
+    def admin_ids_list(self) -> list:
+        """Parse ADMIN_IDS string to list of ints."""
+        if not self.ADMIN_IDS:
+            return []
+        return [int(x.strip()) for x in self.ADMIN_IDS.split(",") if x.strip()]
 
     # Database
     DB_HOST: str = "localhost"
@@ -73,13 +79,6 @@ class Settings(BaseSettings):
 
     # OpenAI (for AI support chatbot)
     OPENAI_API_KEY: str = ""
-
-    @field_validator("ADMIN_IDS", mode="before")
-    @classmethod
-    def parse_admin_ids(cls, v):
-        if isinstance(v, str):
-            return [int(x.strip()) for x in v.split(",") if x.strip()]
-        return v
 
     @property
     def database_url(self) -> str:

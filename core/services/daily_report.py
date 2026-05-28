@@ -208,7 +208,7 @@ class ReportService:
 
         report = await self.generate_daily_report()
 
-        for admin_id in settings.ADMIN_IDS:
+        for admin_id in settings.admin_ids_list:
             try:
                 await bot.send_message(admin_id, report)
             except Exception as e:
@@ -221,7 +221,7 @@ class ReportService:
 
         report = await self.generate_weekly_report()
 
-        for admin_id in settings.ADMIN_IDS:
+        for admin_id in settings.admin_ids_list:
             try:
                 await bot.send_message(admin_id, report)
             except Exception as e:
@@ -247,3 +247,4 @@ def _calc_change(current: int, previous: int) -> str:
 
 # Singleton
 report_service = ReportService()
+

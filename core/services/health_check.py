@@ -137,7 +137,7 @@ class HealthCheckService:
 
         message += "\n⚠️ لطفاً بررسی کنید."
 
-        for admin_id in settings.ADMIN_IDS:
+        for admin_id in settings.admin_ids_list:
             try:
                 await bot.send_message(admin_id, message)
             except Exception:
@@ -155,7 +155,7 @@ class HealthCheckService:
             f"⏱️ زمان: {server_result['checked_at'].strftime('%H:%M:%S')}"
         )
 
-        for admin_id in settings.ADMIN_IDS:
+        for admin_id in settings.admin_ids_list:
             try:
                 await bot.send_message(admin_id, message)
             except Exception:
@@ -164,3 +164,4 @@ class HealthCheckService:
 
 # Singleton
 health_checker = HealthCheckService()
+

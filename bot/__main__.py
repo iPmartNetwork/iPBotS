@@ -43,7 +43,7 @@ async def on_startup():
         logger.info("Polling mode enabled.")
 
     # Notify admins
-    for admin_id in settings.ADMIN_IDS:
+    for admin_id in settings.admin_ids_list:
         try:
             await bot.send_message(admin_id, "✅ ربات با موفقیت راه‌اندازی شد!")
         except Exception:
