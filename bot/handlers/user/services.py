@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from bot.keyboards.user_kb import UserKeyboards
+from bot.states.user_states import UserStates
 from bot.utils.qrcode import generate_qr_code
 from core.database.engine import get_session
 from core.database.models import User, Subscription, SubscriptionStatus
@@ -182,9 +183,52 @@ async def show_qrcode(callback: CallbackQuery, db_user: User):
 
 @router.callback_query(F.data.startswith("sub:upgrade:"))
 async def upgrade_subscription(callback: CallbackQuery, db_user: User):
-    """Upgrade subscription - show available upgrade options."""
+    """Show upgrade options for a subscription."""
     sub_id = int(callback.data.split(":")[2])
-    await callback.answer("⬆️ ارتقای سرویس به زودی فعال می‌شود.", show_alert=True)
+
+    async with get_session() as session:
+        from sqlalchemy.orm import selectinload
+        sub = await session.get(Subscription, sub_id)
+        if not sub or sub.user_id != db_user.id:
+            await callback.answer("⚠️ سرویس یافت نشد.", show_alert=True)
+            return
+
+        # Get plans with more data or longer duration
+        from core.database.models import Plan
+        stmt = (
+            select(Plan)
+            .where(Plan.is_active == True)
+            .where(
+                (Plan.data_limit_gb > (sub.data_limit_bytes // (1024**3))) |
+                (Plan.duration_days > sub.remaining_days)
+            )
+            .order_by(Plan.price)
+            .limit(5)
+        )
+        result = await session.execute(stmt)
+        upgrade_plans = result.scalars().all()
+
+    if not upgrade_plans:
+        await callback.answer("⚠️ پلن ارتقایی موجود نیست.", show_alert=True)
+        return
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+    text = "⬆️ <b>ارتقای سرویس</b>\n\nپلن جدید را انتخاب کنید:\n\n"
+
+    for plan in upgrade_plans:
+        text += f"📋 {plan.name} | {plan.display_data} | {plan.display_duration} | {plan.final_price:,}ت\n"
+        builder.row(InlineKeyboardButton(
+            text=f"{plan.name} - {plan.final_price:,}ت",
+            callback_data=f"pay:wallet:{plan.id}",
+        ))
+
+    builder.row(InlineKeyboardButton(text="🔙 بازگشت", callback_data=f"sub:detail:{sub_id}"))
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()
 
 
 @router.callback_query(F.data.startswith("sub:traffic:"))
@@ -277,5 +321,25 @@ async def rebuy_subscription(callback: CallbackQuery, db_user: User):
         f"⏱️ مدت: {plan.display_duration}\n"
         f"💰 قیمت: {plan.final_price:,} تومان",
         reply_markup=UserKeyboards.plan_detail(plan_id),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("sub:transfer:"))
+async def transfer_subscription_start(callback: CallbackQuery, state: FSMContext, db_user: User):
+    """Start subscription transfer."""
+    sub_id = int(callback.data.split(":")[2])
+
+    async with get_session() as session:
+        sub = await session.get(Subscription, sub_id)
+        if not sub or sub.user_id != db_user.id or not sub.is_active:
+            await callback.answer("⚠️ امکان انتقال وجود ندارد.", show_alert=True)
+            return
+
+    await state.update_data(transfer_sub_id=sub_id)
+    await state.set_state(UserStates.transfer_target)
+    await callback.message.edit_text(
+        "🔄 <b>انتقال سرویس</b>\n\n"
+        "شناسه تلگرام (عددی) شخص مقصد را وارد کنید:"
     )
     await callback.answer()

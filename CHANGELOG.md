@@ -2,6 +2,23 @@
 
 All notable changes to iPBotS will be documented in this file.
 
+## [1.2.0] - 2026-05-29
+
+### ✨ New Features
+- **Pagination utility** for all list views
+- **Subscription Upgrade** - real implementation showing eligible plans
+- **Admin CSV Export** - `/export_users` and `/export_payments` commands
+- **Status Page** - public HTML page at `/status` showing server health
+- **Family Plan model** - share one subscription with multiple users
+- **Subscription Transfer** - transfer active service to another user
+- **Review/Rating model** - users can rate after purchase
+
+### 🔧 Improvements
+- All incomplete features from rc2 are now functional
+- New database models: FamilyGroup, FamilyMember, Review
+- Admin export router registered
+- Pagination noop callback handler
+
 ## [1.0.0-rc2] - 2026-05-29
 
 ### 🔴 Critical Fixes

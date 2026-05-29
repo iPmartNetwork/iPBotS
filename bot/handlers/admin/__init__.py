@@ -9,6 +9,7 @@ from bot.handlers.admin.plans import router as plans_router
 from bot.handlers.admin.payments import router as payments_router
 from bot.handlers.admin.broadcast import router as broadcast_router
 from bot.handlers.admin.settings import router as settings_router
+from bot.handlers.admin.export import router as export_router
 
 
 def register_admin_handlers(dp: Dispatcher):
@@ -20,3 +21,4 @@ def register_admin_handlers(dp: Dispatcher):
     dp.include_router(payments_router)
     dp.include_router(broadcast_router)
     dp.include_router(settings_router)
+    dp.include_router(export_router)

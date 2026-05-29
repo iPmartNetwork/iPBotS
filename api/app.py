@@ -131,6 +131,47 @@ async def nowpayments_callback(request: Request):
     return Response(status_code=200)
 
 
+@app.get("/status")
+async def status_page(request: Request):
+    """Public server status page."""
+    from core.services.health_check import health_checker
+    from datetime import datetime
+
+    results = health_checker._last_results
+
+    servers_html = ""
+    all_online = True
+
+    if not results:
+        servers_html = '<div class="all-ok">🔄 در حال بارگذاری...</div>'
+    else:
+        for server_id, result in results.items():
+            status_class = "online" if result["is_online"] else "offline"
+            if not result["is_online"]:
+                all_online = False
+            ping_text = f'{result["ping_ms"]}ms' if result["ping_ms"] else "—"
+            servers_html += f'''
+            <div class="server">
+                <div class="status-dot {status_class}"></div>
+                <div class="server-info">
+                    <div class="server-name">{result["server_name"]}</div>
+                    <div class="server-meta">{"🟢 آنلاین" if result["is_online"] else "🔴 آفلاین"}</div>
+                </div>
+                <div class="ping">{ping_text}</div>
+            </div>'''
+
+        if all_online:
+            servers_html = '<div class="all-ok">✅ تمام سرورها آنلاین هستند</div>' + servers_html
+
+    last_update = datetime.now().strftime("%H:%M:%S")
+
+    html = open("templates/status.html").read()
+    html = html.replace("{{ servers_html }}", servers_html)
+    html = html.replace("{{ last_update }}", last_update)
+
+    return Response(content=html, media_type="text/html")
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""

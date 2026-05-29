@@ -24,3 +24,6 @@ class UserStates(StatesGroup):
 
     # Profile
     enter_phone = State()
+
+    # Transfer
+    transfer_target = State()

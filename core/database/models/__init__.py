@@ -21,6 +21,8 @@ from core.database.models.loyalty import (
 from core.database.models.custom_plan import CustomPlanConfig
 from core.database.models.server_monitoring import ServerStatus, LoadBalanceRule
 from core.database.models.bundle import Bundle, BundleItem
+from core.database.models.family_plan import FamilyGroup, FamilyMember
+from core.database.models.review import Review
 
 __all__ = [
     "Base",
@@ -58,4 +60,7 @@ __all__ = [
     "LoadBalanceRule",
     "Bundle",
     "BundleItem",
+    "FamilyGroup",
+    "FamilyMember",
+    "Review",
 ]

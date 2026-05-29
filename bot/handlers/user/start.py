@@ -216,3 +216,9 @@ async def cmd_help(message: Message):
 async def cmd_id(message: Message):
     """Show user Telegram ID."""
     await message.answer(f"🆔 شناسه تلگرام شما: <code>{message.from_user.id}</code>")
+
+
+@router.callback_query(F.data == "noop")
+async def noop_callback(callback: CallbackQuery):
+    """No-op callback for pagination info button."""
+    await callback.answer()
