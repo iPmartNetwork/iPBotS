@@ -1,13 +1,14 @@
-"""Admin payment management handlers."""
+"""Admin payment management handlers - complete rewrite."""
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 
 from bot.filters.admin import AdminFilter
 from bot.keyboards.admin_kb import AdminKeyboards
 from core.database.engine import get_session
-from core.database.models import Payment, PaymentStatus, PaymentMethod, Order, OrderStatus, User
+from core.database.models import Payment, PaymentStatus, Order, OrderStatus, User
 
 router = Router(name="admin_payments")
 router.message.filter(AdminFilter())
@@ -15,8 +16,10 @@ router.callback_query.filter(AdminFilter())
 
 
 @router.message(F.text == "💳 پرداخت‌ها")
-async def payments_menu(message: Message):
+async def payments_menu(message: Message, state: FSMContext):
     """Show pending payments."""
+    await state.clear()
+
     async with get_session() as session:
         stmt = (
             select(Payment)
@@ -31,21 +34,18 @@ async def payments_menu(message: Message):
         await message.answer("✅ پرداخت معلقی وجود ندارد.")
         return
 
-    text = "💳 <b>پرداخت‌های معلق</b>\n\n"
-    for pay in payments:
-        text += (
-            f"🔹 #{pay.id} | {pay.amount:,} تومان | "
-            f"{pay.method.value} | کاربر: {pay.user_id}\n"
-        )
-
     from aiogram.types import InlineKeyboardButton
     from aiogram.utils.keyboard import InlineKeyboardBuilder
 
     builder = InlineKeyboardBuilder()
+
+    text = f"💳 <b>پرداخت‌های معلق</b> ({len(payments)})\n\n"
+
     for pay in payments[:10]:
+        text += f"🔹 #{pay.id} | {pay.amount:,}ت | {pay.method.value}\n"
         builder.row(
             InlineKeyboardButton(
-                text=f"#{pay.id} - {pay.amount:,} تومان",
+                text=f"#{pay.id} - {pay.amount:,}ت ({pay.method.value})",
                 callback_data=f"admin:pay:view:{pay.id}",
             )
         )
@@ -61,26 +61,20 @@ async def view_payment(callback: CallbackQuery):
     async with get_session() as session:
         payment = await session.get(Payment, payment_id)
         if not payment:
-            await callback.answer("⚠️ پرداخت یافت نشد.", show_alert=True)
+            await callback.answer("⚠️ یافت نشد.", show_alert=True)
             return
-
         user = await session.get(User, payment.user_id)
 
     text = (
-        f"💳 <b>جزئیات پرداخت #{payment.id}</b>\n\n"
-        f"👤 کاربر: {user.full_name if user else 'نامشخص'} ({payment.user_id})\n"
+        f"💳 <b>پرداخت #{payment.id}</b>\n\n"
+        f"👤 کاربر: {user.full_name if user else '?'} (<code>{user.telegram_id if user else '?'}</code>)\n"
         f"💰 مبلغ: {payment.amount:,} تومان\n"
         f"📋 روش: {payment.method.value}\n"
         f"📊 وضعیت: {payment.status.value}\n"
         f"📅 تاریخ: {payment.created_at.strftime('%Y/%m/%d %H:%M')}\n"
     )
 
-    if payment.card_sender_name:
-        text += f"👤 نام واریزکننده: {payment.card_sender_name}\n"
-
-    await callback.message.edit_text(
-        text, reply_markup=AdminKeyboards.payment_pending(payment_id)
-    )
+    await callback.message.edit_text(text, reply_markup=AdminKeyboards.payment_pending(payment_id))
     await callback.answer()
 
 
@@ -92,13 +86,12 @@ async def approve_payment(callback: CallbackQuery):
     async with get_session() as session:
         payment = await session.get(Payment, payment_id)
         if not payment:
-            await callback.answer("⚠️ پرداخت یافت نشد.", show_alert=True)
+            await callback.answer("⚠️ یافت نشد.", show_alert=True)
             return
 
         payment.status = PaymentStatus.COMPLETED
         payment.verified_by = callback.from_user.id
 
-        # Update order if exists
         if payment.order_id:
             order = await session.get(Order, payment.order_id)
             if order:
@@ -106,21 +99,12 @@ async def approve_payment(callback: CallbackQuery):
 
         user = await session.get(User, payment.user_id)
 
-    await callback.message.edit_text(
-        f"✅ پرداخت #{payment_id} تأیید شد.\n"
-        f"مبلغ: {payment.amount:,} تومان"
-    )
+    await callback.message.edit_text(f"✅ پرداخت #{payment_id} تأیید شد. ({payment.amount:,}ت)")
 
-    # Notify user
     if user:
         from bot.loader import bot
-
         try:
-            await bot.send_message(
-                user.telegram_id,
-                f"✅ پرداخت شما به مبلغ {payment.amount:,} تومان تأیید شد.\n"
-                f"سرویس شما به زودی فعال می‌شود.",
-            )
+            await bot.send_message(user.telegram_id, f"✅ پرداخت {payment.amount:,} تومان تأیید شد.")
         except Exception:
             pass
 
@@ -135,7 +119,7 @@ async def reject_payment(callback: CallbackQuery):
     async with get_session() as session:
         payment = await session.get(Payment, payment_id)
         if not payment:
-            await callback.answer("⚠️ پرداخت یافت نشد.", show_alert=True)
+            await callback.answer("⚠️ یافت نشد.", show_alert=True)
             return
 
         payment.status = PaymentStatus.FAILED
@@ -150,16 +134,10 @@ async def reject_payment(callback: CallbackQuery):
 
     await callback.message.edit_text(f"❌ پرداخت #{payment_id} رد شد.")
 
-    # Notify user
     if user:
         from bot.loader import bot
-
         try:
-            await bot.send_message(
-                user.telegram_id,
-                f"❌ پرداخت شما به مبلغ {payment.amount:,} تومان رد شد.\n"
-                f"در صورت مشکل با پشتیبانی تماس بگیرید.",
-            )
+            await bot.send_message(user.telegram_id, f"❌ پرداخت {payment.amount:,} تومان رد شد.")
         except Exception:
             pass
 

@@ -1,4 +1,4 @@
-"""Admin broadcast message handlers."""
+"""Admin broadcast message handlers - complete rewrite."""
 
 import asyncio
 
@@ -19,11 +19,11 @@ router.callback_query.filter(AdminFilter())
 
 
 @router.message(F.text == "📢 ارسال پیام")
-async def broadcast_menu(message: Message):
+async def broadcast_menu(message: Message, state: FSMContext):
     """Show broadcast options."""
+    await state.clear()
     await message.answer(
-        "📢 <b>ارسال پیام انبوه</b>\n\n"
-        "نوع ارسال را انتخاب کنید:",
+        "📢 <b>ارسال پیام انبوه</b>\n\nنوع ارسال را انتخاب کنید:",
         reply_markup=AdminKeyboards.broadcast_options(),
     )
 
@@ -33,9 +33,9 @@ async def broadcast_all(callback: CallbackQuery, state: FSMContext):
     """Broadcast to all users."""
     await state.update_data(broadcast_target="all")
     await callback.message.edit_text(
-        "📢 <b>ارسال به همه کاربران</b>\n\n"
+        "📢 <b>ارسال به همه</b>\n\n"
         "پیام خود را بنویسید:\n"
-        "(می‌توانید از HTML استفاده کنید)"
+        "(HTML پشتیبانی می‌شود: <b>bold</b>, <i>italic</i>, <code>code</code>)"
     )
     await state.set_state(AdminStates.broadcast_message)
     await callback.answer()
@@ -43,19 +43,16 @@ async def broadcast_all(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "admin:broadcast:active")
 async def broadcast_active(callback: CallbackQuery, state: FSMContext):
-    """Broadcast to active users only."""
+    """Broadcast to active users."""
     await state.update_data(broadcast_target="active")
-    await callback.message.edit_text(
-        "📢 <b>ارسال به کاربران فعال</b>\n\n"
-        "پیام خود را بنویسید:"
-    )
+    await callback.message.edit_text("📢 <b>ارسال به فعال‌ها</b>\n\nپیام خود را بنویسید:")
     await state.set_state(AdminStates.broadcast_message)
     await callback.answer()
 
 
 @router.message(AdminStates.broadcast_message)
-async def process_broadcast_message(message: Message, state: FSMContext):
-    """Process broadcast message and confirm."""
+async def process_broadcast(message: Message, state: FSMContext):
+    """Process and confirm broadcast."""
     await state.update_data(broadcast_text=message.text)
     data = await state.get_data()
     target = data.get("broadcast_target", "all")
@@ -65,7 +62,6 @@ async def process_broadcast_message(message: Message, state: FSMContext):
             stmt = select(User).where(User.is_active == True, User.is_banned == False)
         else:
             stmt = select(User).where(User.is_banned == False)
-
         result = await session.execute(stmt)
         users = result.scalars().all()
         user_count = len(users)
@@ -74,32 +70,23 @@ async def process_broadcast_message(message: Message, state: FSMContext):
 
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=f"✅ ارسال به {user_count} کاربر",
-                    callback_data="admin:broadcast:confirm",
-                ),
-            ],
-            [
-                InlineKeyboardButton(text="❌ انصراف", callback_data="admin:menu"),
-            ],
+            [InlineKeyboardButton(text=f"✅ ارسال به {user_count} نفر", callback_data="admin:broadcast:send")],
+            [InlineKeyboardButton(text="❌ انصراف", callback_data="admin:broadcast:cancel")],
         ]
     )
 
     await message.answer(
-        f"📢 <b>پیش‌نمایش پیام:</b>\n\n"
-        f"{message.text}\n\n"
+        f"📢 <b>پیش‌نمایش:</b>\n\n{message.text}\n\n"
         f"━━━━━━━━━━━━━━━\n"
-        f"👥 تعداد دریافت‌کنندگان: {user_count}\n"
-        f"📋 هدف: {'همه' if target == 'all' else 'فعال‌ها'}",
+        f"👥 دریافت‌کنندگان: {user_count}",
         reply_markup=kb,
     )
     await state.set_state(AdminStates.broadcast_confirm)
 
 
-@router.callback_query(AdminStates.broadcast_confirm, F.data == "admin:broadcast:confirm")
-async def confirm_broadcast(callback: CallbackQuery, state: FSMContext):
-    """Confirm and send broadcast."""
+@router.callback_query(AdminStates.broadcast_confirm, F.data == "admin:broadcast:send")
+async def send_broadcast(callback: CallbackQuery, state: FSMContext):
+    """Send broadcast."""
     data = await state.get_data()
     text = data.get("broadcast_text", "")
     target = data.get("broadcast_target", "all")
@@ -113,7 +100,6 @@ async def confirm_broadcast(callback: CallbackQuery, state: FSMContext):
             stmt = select(User).where(User.is_active == True, User.is_banned == False)
         else:
             stmt = select(User).where(User.is_banned == False)
-
         result = await session.execute(stmt)
         users = result.scalars().all()
 
@@ -128,20 +114,26 @@ async def confirm_broadcast(callback: CallbackQuery, state: FSMContext):
             await bot.send_message(user.telegram_id, text)
             success += 1
         except Exception as e:
-            error_msg = str(e).lower()
-            if "blocked" in error_msg or "deactivated" in error_msg:
+            if "blocked" in str(e).lower() or "deactivated" in str(e).lower():
                 blocked += 1
             else:
                 failed += 1
 
-        # Rate limit: 30 messages per second
-        if (success + failed + blocked) % 30 == 0:
+        if (success + failed + blocked) % 25 == 0:
             await asyncio.sleep(1)
 
     await callback.message.answer(
-        f"✅ <b>ارسال پیام انبوه تمام شد</b>\n\n"
+        f"✅ <b>ارسال تمام شد</b>\n\n"
         f"✅ موفق: {success}\n"
-        f"🚫 بلاک شده: {blocked}\n"
+        f"🚫 بلاک: {blocked}\n"
         f"❌ ناموفق: {failed}\n"
         f"📊 کل: {success + failed + blocked}"
     )
+
+
+@router.callback_query(AdminStates.broadcast_confirm, F.data == "admin:broadcast:cancel")
+async def cancel_broadcast(callback: CallbackQuery, state: FSMContext):
+    """Cancel broadcast."""
+    await state.clear()
+    await callback.message.edit_text("❌ ارسال لغو شد.")
+    await callback.answer()

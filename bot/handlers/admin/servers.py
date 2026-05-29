@@ -1,4 +1,4 @@
-"""Admin server management handlers."""
+"""Admin server management handlers - complete rewrite."""
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
@@ -18,12 +18,27 @@ router.callback_query.filter(AdminFilter())
 
 
 @router.message(F.text == "🖥️ سرورها")
-async def servers_menu(message: Message):
+async def servers_menu(message: Message, state: FSMContext):
     """Show servers list."""
+    await state.clear()
+
     async with get_session() as session:
         stmt = select(Server).order_by(Server.id)
         result = await session.execute(stmt)
         servers = result.scalars().all()
+
+    if not servers:
+        from aiogram.types import InlineKeyboardButton
+        from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+        builder = InlineKeyboardBuilder()
+        builder.row(InlineKeyboardButton(text="➕ افزودن سرور", callback_data="admin:server:add"))
+
+        await message.answer(
+            "🖥️ <b>سرورها</b>\n\nهیچ سروری اضافه نشده.\nبرای شروع یک سرور اضافه کنید.",
+            reply_markup=builder.as_markup(),
+        )
+        return
 
     await message.answer(
         "🖥️ <b>مدیریت سرورها</b>",
@@ -34,9 +49,11 @@ async def servers_menu(message: Message):
 @router.callback_query(F.data == "admin:server:add")
 async def add_server_start(callback: CallbackQuery, state: FSMContext):
     """Start adding a new server."""
+    await state.clear()
     await callback.message.edit_text(
         "🖥️ <b>افزودن سرور جدید</b>\n\n"
-        "نام سرور را وارد کنید:"
+        "نام سرور را وارد کنید:\n"
+        "(مثال: سرور آلمان 1)"
     )
     await state.set_state(AdminStates.server_name)
     await callback.answer()
@@ -53,8 +70,13 @@ async def server_name_input(message: Message, state: FSMContext):
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="3x-ui (Sanaei)", callback_data="stype:xui"),
+            ],
+            [
+                InlineKeyboardButton(text="Marzban", callback_data="stype:marzban"),
+            ],
+            [
                 InlineKeyboardButton(text="Hiddify", callback_data="stype:hiddify"),
-            ]
+            ],
         ]
     )
     await message.answer("نوع پنل را انتخاب کنید:", reply_markup=kb)
@@ -67,8 +89,9 @@ async def server_type_input(callback: CallbackQuery, state: FSMContext):
     panel_type = callback.data.split(":")[1]
     await state.update_data(server_type=panel_type)
     await callback.message.edit_text(
-        "آدرس پنل را وارد کنید:\n"
-        "(مثال: https://panel.example.com)"
+        "🌐 آدرس پنل را وارد کنید:\n"
+        "(مثال: https://panel.example.com)\n\n"
+        "⚠️ حتماً با https:// یا http:// شروع شود"
     )
     await state.set_state(AdminStates.server_host)
     await callback.answer()
@@ -78,8 +101,10 @@ async def server_type_input(callback: CallbackQuery, state: FSMContext):
 async def server_host_input(message: Message, state: FSMContext):
     """Process server host."""
     host = message.text.strip().rstrip("/")
+    if not host.startswith("http"):
+        host = f"https://{host}"
     await state.update_data(server_host=host)
-    await message.answer("پورت پنل را وارد کنید (پیش‌فرض: 443):")
+    await message.answer("🔌 پورت پنل را وارد کنید:\n(پیش‌فرض: 443، فقط عدد)")
     await state.set_state(AdminStates.server_port)
 
 
@@ -91,7 +116,7 @@ async def server_port_input(message: Message, state: FSMContext):
     except ValueError:
         port = 443
     await state.update_data(server_port=port)
-    await message.answer("یوزرنیم پنل را وارد کنید:")
+    await message.answer("👤 یوزرنیم پنل:")
     await state.set_state(AdminStates.server_username)
 
 
@@ -99,23 +124,22 @@ async def server_port_input(message: Message, state: FSMContext):
 async def server_username_input(message: Message, state: FSMContext):
     """Process server username."""
     await state.update_data(server_username=message.text.strip())
-    await message.answer("پسورد پنل را وارد کنید:")
+    await message.answer("🔑 پسورد پنل:")
     await state.set_state(AdminStates.server_password)
 
 
 @router.message(AdminStates.server_password)
 async def server_password_input(message: Message, state: FSMContext):
-    """Process server password and create server."""
+    """Process server password."""
     await state.update_data(server_password=message.text.strip())
     data = await state.get_data()
 
-    # Check if Hiddify needs API key
     if data.get("server_type") == "hiddify":
-        await message.answer("API Key هیدیفای را وارد کنید:")
+        await message.answer("🔑 API Key هیدیفای:")
         await state.set_state(AdminStates.server_api_key)
         return
 
-    # Create server for 3x-ui
+    # Create server
     await _create_server(message, state, data)
 
 
@@ -128,8 +152,9 @@ async def server_api_key_input(message: Message, state: FSMContext):
 
 
 async def _create_server(message: Message, state: FSMContext, data: dict):
-    """Create server in database."""
-    panel_type = PanelType.XUI if data["server_type"] == "xui" else PanelType.HIDDIFY
+    """Create server in database and test connection."""
+    type_map = {"xui": PanelType.XUI, "hiddify": PanelType.HIDDIFY, "marzban": PanelType.MARZBAN}
+    panel_type = type_map.get(data["server_type"], PanelType.XUI)
 
     async with get_session() as session:
         server = Server(
@@ -140,57 +165,49 @@ async def _create_server(message: Message, state: FSMContext, data: dict):
             username=data["server_username"],
             password=data["server_password"],
             hiddify_api_key=data.get("server_api_key"),
+            is_default=True,
         )
         session.add(server)
-
-    await message.answer(
-        f"✅ سرور «{data['server_name']}» با موفقیت اضافه شد.\n\n"
-        f"🔄 برای تست اتصال از منوی سرورها اقدام کنید."
-    )
-    await state.clear()
-
-
-@router.callback_query(F.data.startswith("admin:server:test:"))
-async def test_server(callback: CallbackQuery):
-    """Test server connection."""
-    server_id = int(callback.data.split(":")[3])
-
-    async with get_session() as session:
-        server = await session.get(Server, server_id)
-
-    if not server:
-        await callback.answer("⚠️ سرور یافت نشد.", show_alert=True)
-        return
-
-    await callback.answer("🔄 در حال تست اتصال...")
+        await session.flush()
+        server_id = server.id
 
     # Test connection
+    await message.answer("🔄 در حال تست اتصال...")
+
     from core.services.panel.xui import XUIService
     from core.services.panel.hiddify import HiddifyService
+    from core.services.panel.marzban import MarzbanService
 
-    if server.panel_type == PanelType.XUI:
-        panel = XUIService(
-            host=server.host,
-            port=server.port,
-            username=server.username,
-            password=server.password,
-            api_path=server.api_path,
-        )
+    if panel_type == PanelType.XUI:
+        panel = XUIService(host=data["server_host"], port=data.get("server_port", 443),
+                          username=data["server_username"], password=data["server_password"])
+    elif panel_type == PanelType.MARZBAN:
+        panel = MarzbanService(host=data["server_host"], port=data.get("server_port", 443),
+                              username=data["server_username"], password=data["server_password"])
     else:
-        panel = HiddifyService(
-            host=server.host,
-            port=server.port,
-            username=server.username,
-            password=server.password,
-            hiddify_api_key=server.hiddify_api_key,
-        )
+        panel = HiddifyService(host=data["server_host"], port=data.get("server_port", 443),
+                              username=data["server_username"], password=data["server_password"],
+                              hiddify_api_key=data.get("server_api_key"))
 
     success = await panel.login()
 
     if success:
-        await callback.message.answer(f"✅ اتصال به سرور «{server.name}» موفق بود!")
+        await message.answer(
+            f"✅ <b>سرور اضافه شد!</b>\n\n"
+            f"🖥️ نام: {data['server_name']}\n"
+            f"📋 نوع: {panel_type.value}\n"
+            f"🌐 آدرس: {data['server_host']}:{data.get('server_port', 443)}\n"
+            f"🟢 اتصال: موفق"
+        )
     else:
-        await callback.message.answer(f"❌ اتصال به سرور «{server.name}» ناموفق بود.")
+        await message.answer(
+            f"⚠️ <b>سرور اضافه شد ولی اتصال ناموفق بود!</b>\n\n"
+            f"🖥️ نام: {data['server_name']}\n"
+            f"🔴 اتصال: ناموفق\n\n"
+            f"لطفاً آدرس، پورت و اطلاعات ورود را بررسی کنید."
+        )
+
+    await state.clear()
 
 
 @router.callback_query(F.data.startswith("admin:server:detail:"))
@@ -215,10 +232,45 @@ async def server_detail(callback: CallbackQuery):
         f"⭐ پیش‌فرض: {'بله' if server.is_default else 'خیر'}"
     )
 
-    await callback.message.edit_text(
-        text, reply_markup=AdminKeyboards.server_detail(server_id)
-    )
+    await callback.message.edit_text(text, reply_markup=AdminKeyboards.server_detail(server_id))
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:server:test:"))
+async def test_server(callback: CallbackQuery):
+    """Test server connection."""
+    server_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        server = await session.get(Server, server_id)
+
+    if not server:
+        await callback.answer("⚠️ سرور یافت نشد.", show_alert=True)
+        return
+
+    await callback.answer("🔄 در حال تست...")
+
+    from core.services.panel.xui import XUIService
+    from core.services.panel.hiddify import HiddifyService
+    from core.services.panel.marzban import MarzbanService
+
+    if server.panel_type == PanelType.XUI:
+        panel = XUIService(host=server.host, port=server.port,
+                          username=server.username, password=server.password, api_path=server.api_path)
+    elif server.panel_type == PanelType.MARZBAN:
+        panel = MarzbanService(host=server.host, port=server.port,
+                              username=server.username, password=server.password)
+    else:
+        panel = HiddifyService(host=server.host, port=server.port,
+                              username=server.username, password=server.password,
+                              hiddify_api_key=server.hiddify_api_key)
+
+    success = await panel.login()
+
+    if success:
+        await callback.message.answer(f"🟢 اتصال به «{server.name}» موفق!")
+    else:
+        await callback.message.answer(f"🔴 اتصال به «{server.name}» ناموفق!")
 
 
 @router.callback_query(F.data.startswith("admin:server:delete:"))
@@ -227,7 +279,7 @@ async def delete_server(callback: CallbackQuery):
     server_id = int(callback.data.split(":")[3])
 
     await callback.message.edit_text(
-        "⚠️ آیا از حذف این سرور مطمئن هستید؟",
+        "⚠️ آیا از حذف این سرور مطمئن هستید?",
         reply_markup=AdminKeyboards.confirm_action("server_delete", server_id),
     )
     await callback.answer()

@@ -3,13 +3,14 @@
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
-from sqlalchemy import select, or_
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 
 from bot.filters.admin import AdminFilter
 from bot.keyboards.admin_kb import AdminKeyboards
 from bot.states import AdminStates
 from core.database.engine import get_session
-from core.database.models import User, Wallet, WalletTransaction, TransactionType
+from core.database.models import User, Wallet, WalletTransaction, TransactionType, Subscription, SubscriptionStatus
 
 router = Router(name="admin_users")
 router.message.filter(AdminFilter())
@@ -18,12 +19,54 @@ router.callback_query.filter(AdminFilter())
 
 @router.message(F.text == "👥 کاربران")
 async def users_menu(message: Message, state: FSMContext):
-    """Show users management."""
-    await message.answer(
-        "👥 <b>مدیریت کاربران</b>\n\n"
-        "شناسه تلگرام یا یوزرنیم کاربر را ارسال کنید:"
+    """Show users list."""
+    await state.clear()
+
+    async with get_session() as session:
+        # Get all users with stats
+        stmt = (
+            select(User)
+            .order_by(User.id.desc())
+            .limit(20)
+        )
+        result = await session.execute(stmt)
+        users = result.scalars().all()
+
+        total_count = await session.scalar(select(func.count(User.id))) or 0
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+
+    text = f"👥 <b>کاربران</b> ({total_count} نفر)\n\n"
+
+    for user in users[:15]:
+        status = "🟢" if user.is_active and not user.is_banned else "🔴"
+        name = user.full_name[:15]
+        builder.row(
+            InlineKeyboardButton(
+                text=f"{status} {name} | {user.telegram_id}",
+                callback_data=f"admin:user:view:{user.id}",
+            )
+        )
+
+    builder.row(
+        InlineKeyboardButton(text="🔍 جستجو", callback_data="admin:user:search"),
+    )
+
+    await message.answer(text, reply_markup=builder.as_markup())
+
+
+@router.callback_query(F.data == "admin:user:search")
+async def search_user_prompt(callback: CallbackQuery, state: FSMContext):
+    """Prompt for user search."""
+    await callback.message.edit_text(
+        "🔍 <b>جستجوی کاربر</b>\n\n"
+        "شناسه تلگرام یا یوزرنیم را ارسال کنید:"
     )
     await state.set_state(AdminStates.user_search)
+    await callback.answer()
 
 
 @router.message(AdminStates.user_search)
@@ -32,7 +75,6 @@ async def search_user(message: Message, state: FSMContext):
     query = message.text.strip().replace("@", "")
 
     async with get_session() as session:
-        # Search by telegram_id or username
         try:
             telegram_id = int(query)
             stmt = select(User).where(User.telegram_id == telegram_id)
@@ -43,26 +85,112 @@ async def search_user(message: Message, state: FSMContext):
         user = result.scalar_one_or_none()
 
     if not user:
-        await message.answer("❌ کاربر یافت نشد. دوباره تلاش کنید.")
+        await message.answer("❌ کاربر یافت نشد.")
+        await state.clear()
         return
 
     await state.clear()
+    await _show_user_detail(message, user)
 
-    user_text = (
+
+@router.callback_query(F.data.startswith("admin:user:view:"))
+async def view_user(callback: CallbackQuery):
+    """View user details."""
+    user_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        user = await session.get(User, user_id)
+
+    if not user:
+        await callback.answer("❌ کاربر یافت نشد.", show_alert=True)
+        return
+
+    await _show_user_detail_callback(callback, user)
+    await callback.answer()
+
+
+async def _show_user_detail(message: Message, user: User):
+    """Show user detail via message."""
+    async with get_session() as session:
+        # Get wallet
+        wallet_stmt = select(Wallet).where(Wallet.user_id == user.id)
+        wallet_result = await session.execute(wallet_stmt)
+        wallet = wallet_result.scalar_one_or_none()
+
+        # Count active subscriptions
+        sub_count = await session.scalar(
+            select(func.count(Subscription.id)).where(
+                Subscription.user_id == user.id,
+                Subscription.status == SubscriptionStatus.ACTIVE,
+            )
+        ) or 0
+
+        # Count referrals
+        ref_count = await session.scalar(
+            select(func.count(User.id)).where(User.referred_by_id == user.id)
+        ) or 0
+
+    balance = wallet.balance if wallet else 0
+    status = "🟢 فعال" if user.is_active and not user.is_banned else "🔴 مسدود"
+
+    text = (
         f"👤 <b>اطلاعات کاربر</b>\n\n"
         f"🆔 شناسه: <code>{user.telegram_id}</code>\n"
         f"👤 نام: {user.full_name}\n"
         f"📱 یوزرنیم: @{user.username or 'ندارد'}\n"
-        f"📅 عضویت: {user.created_at.strftime('%Y/%m/%d')}\n"
-        f"🛒 خرید: {user.total_purchases}\n"
-        f"💰 مجموع خرید: {user.total_spent:,} تومان\n"
-        f"🚫 مسدود: {'بله' if user.is_banned else 'خیر'}\n"
-        f"🔗 کد دعوت: {user.referral_code}\n"
+        f"📊 وضعیت: {status}\n"
+        f"📅 عضویت: {user.created_at.strftime('%Y/%m/%d')}\n\n"
+        f"💰 <b>مالی:</b>\n"
+        f"   موجودی کیف پول: {balance:,} تومان\n"
+        f"   مجموع خرید: {user.total_spent:,} تومان\n"
+        f"   تعداد خرید: {user.total_purchases}\n\n"
+        f"📦 <b>سرویس‌ها:</b>\n"
+        f"   فعال: {sub_count}\n\n"
+        f"👥 <b>زیرمجموعه:</b> {ref_count} نفر\n"
+        f"🔗 کد دعوت: <code>{user.referral_code}</code>"
     )
 
-    await message.answer(
-        user_text, reply_markup=AdminKeyboards.user_management(user.id)
+    if user.is_banned:
+        text += f"\n\n🚫 دلیل مسدودی: {user.ban_reason or 'نامشخص'}"
+
+    await message.answer(text, reply_markup=AdminKeyboards.user_management(user.id))
+
+
+async def _show_user_detail_callback(callback: CallbackQuery, user: User):
+    """Show user detail via callback."""
+    async with get_session() as session:
+        wallet_stmt = select(Wallet).where(Wallet.user_id == user.id)
+        wallet_result = await session.execute(wallet_stmt)
+        wallet = wallet_result.scalar_one_or_none()
+
+        sub_count = await session.scalar(
+            select(func.count(Subscription.id)).where(
+                Subscription.user_id == user.id,
+                Subscription.status == SubscriptionStatus.ACTIVE,
+            )
+        ) or 0
+
+        ref_count = await session.scalar(
+            select(func.count(User.id)).where(User.referred_by_id == user.id)
+        ) or 0
+
+    balance = wallet.balance if wallet else 0
+    status = "🟢 فعال" if user.is_active and not user.is_banned else "🔴 مسدود"
+
+    text = (
+        f"👤 <b>اطلاعات کاربر</b>\n\n"
+        f"🆔 شناسه: <code>{user.telegram_id}</code>\n"
+        f"👤 نام: {user.full_name}\n"
+        f"📱 یوزرنیم: @{user.username or 'ندارد'}\n"
+        f"📊 وضعیت: {status}\n"
+        f"📅 عضویت: {user.created_at.strftime('%Y/%m/%d')}\n\n"
+        f"💰 موجودی: {balance:,} تومان\n"
+        f"🛒 خرید: {user.total_purchases} ({user.total_spent:,} ت)\n"
+        f"📦 سرویس فعال: {sub_count}\n"
+        f"👥 زیرمجموعه: {ref_count}"
     )
+
+    await callback.message.edit_text(text, reply_markup=AdminKeyboards.user_management(user.id))
 
 
 @router.callback_query(F.data.startswith("admin:user:credit:"))
@@ -71,9 +199,7 @@ async def credit_user_start(callback: CallbackQuery, state: FSMContext):
     user_id = int(callback.data.split(":")[3])
     await state.update_data(credit_user_id=user_id)
     await state.set_state(AdminStates.user_credit_amount)
-    await callback.message.edit_text(
-        "💰 مبلغ شارژ کیف پول را به تومان وارد کنید:"
-    )
+    await callback.message.edit_text("💰 مبلغ شارژ کیف پول را به تومان وارد کنید:")
     await callback.answer()
 
 
@@ -111,24 +237,21 @@ async def credit_user_process(message: Message, state: FSMContext):
             transaction_type=TransactionType.ADMIN_CREDIT,
             amount=amount,
             balance_after=wallet.balance,
-            description=f"شارژ توسط ادمین",
+            description="شارژ توسط ادمین",
         )
         session.add(tx)
 
+        # Get user for notification
+        user = await session.get(User, user_id)
+
     await message.answer(
-        f"✅ مبلغ {amount:,} تومان به کیف پول کاربر اضافه شد.\n"
+        f"✅ مبلغ {amount:,} تومان به کیف پول اضافه شد.\n"
         f"موجودی جدید: {wallet.balance:,} تومان"
     )
 
     # Notify user
-    user_stmt = select(User).where(User.id == user_id)
-    async with get_session() as session:
-        user_result = await session.execute(user_stmt)
-        user = user_result.scalar_one_or_none()
-
     if user:
         from bot.loader import bot
-
         try:
             await bot.send_message(
                 user.telegram_id,
@@ -203,3 +326,38 @@ async def message_user_process(message: Message, state: FSMContext):
         await message.answer(f"❌ خطا در ارسال: {e}")
 
     await state.clear()
+
+
+@router.callback_query(F.data.startswith("admin:user:subs:"))
+async def user_subscriptions(callback: CallbackQuery):
+    """Show user's subscriptions."""
+    user_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        from sqlalchemy.orm import selectinload
+        stmt = (
+            select(Subscription)
+            .where(Subscription.user_id == user_id)
+            .options(selectinload(Subscription.plan))
+            .order_by(Subscription.id.desc())
+            .limit(10)
+        )
+        result = await session.execute(stmt)
+        subs = result.scalars().all()
+
+    if not subs:
+        await callback.answer("سرویسی ندارد.", show_alert=True)
+        return
+
+    text = "📦 <b>سرویس‌های کاربر:</b>\n\n"
+    for sub in subs:
+        status = "✅" if sub.is_active else "❌"
+        plan_name = sub.plan.name if sub.plan else "نامشخص"
+        text += (
+            f"{status} {plan_name}\n"
+            f"   📊 {sub.used_traffic_gb}/{sub.data_limit_gb}GB | "
+            f"⏱️ {sub.remaining_days} روز\n\n"
+        )
+
+    await callback.message.edit_text(text)
+    await callback.answer()
