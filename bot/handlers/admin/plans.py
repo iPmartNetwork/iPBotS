@@ -40,7 +40,7 @@ async def plans_menu(message: Message, state: FSMContext):
             builder.row(
                 InlineKeyboardButton(
                     text=f"{'✅' if plan.is_active else '❌'} {plan.name}",
-                    callback_data=f"admin:plan:toggle:{plan.id}",
+                    callback_data=f"admin:plan:edit:{plan.id}",
                 )
             )
     else:
@@ -64,6 +64,51 @@ async def toggle_plan(callback: CallbackQuery):
             new_status = "فعال ✅" if plan.is_active else "غیرفعال ❌"
 
     await callback.answer(f"پلن {new_status} شد", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("admin:plan:edit:"))
+async def edit_plan_menu(callback: CallbackQuery):
+    """Show plan edit options."""
+    plan_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        plan = await session.get(Plan, plan_id)
+
+    if not plan:
+        await callback.answer("⚠️ یافت نشد.", show_alert=True)
+        return
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text=f"📋 نام: {plan.name}", callback_data=f"admin:plan:setname:{plan_id}"))
+    builder.row(InlineKeyboardButton(text=f"💰 قیمت: {plan.price:,}ت", callback_data=f"admin:plan:setprice:{plan_id}"))
+    builder.row(InlineKeyboardButton(text=f"📊 حجم: {plan.data_limit_gb}GB", callback_data=f"admin:plan:setdata:{plan_id}"))
+    builder.row(InlineKeyboardButton(text=f"⏱️ مدت: {plan.duration_days}d", callback_data=f"admin:plan:setduration:{plan_id}"))
+    builder.row(InlineKeyboardButton(text="🗑️ حذف پلن", callback_data=f"admin:plan:delete:{plan_id}"))
+    builder.row(InlineKeyboardButton(text="🔙 بازگشت", callback_data="admin:plans:list"))
+
+    await callback.message.edit_text(
+        f"✏️ <b>ویرایش پلن: {plan.name}</b>\n\n"
+        f"فیلد مورد نظر را انتخاب کنید:",
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:plan:delete:"))
+async def delete_plan(callback: CallbackQuery):
+    """Delete a plan."""
+    plan_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        plan = await session.get(Plan, plan_id)
+        if plan:
+            await session.delete(plan)
+
+    await callback.message.edit_text("✅ پلن حذف شد.")
+    await callback.answer()
 
 
 @router.callback_query(F.data == "admin:plan:add")

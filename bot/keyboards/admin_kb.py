@@ -80,8 +80,13 @@ class AdminKeyboards:
         )
         builder.row(
             InlineKeyboardButton(
-                text="🚫 مسدود کردن", callback_data=f"admin:user:ban:{user_id}"
+                text="🚫 مسدود", callback_data=f"admin:user:ban:{user_id}"
             ),
+            InlineKeyboardButton(
+                text="✅ رفع مسدودی", callback_data=f"admin:user:unban:{user_id}"
+            ),
+        )
+        builder.row(
             InlineKeyboardButton(
                 text="📩 ارسال پیام", callback_data=f"admin:user:msg:{user_id}"
             ),

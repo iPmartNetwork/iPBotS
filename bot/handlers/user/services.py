@@ -178,6 +178,13 @@ async def show_qrcode(callback: CallbackQuery, db_user: User):
     await callback.answer()
 
 
+@router.callback_query(F.data.startswith("sub:upgrade:"))
+async def upgrade_subscription(callback: CallbackQuery, db_user: User):
+    """Upgrade subscription - show available upgrade options."""
+    sub_id = int(callback.data.split(":")[2])
+    await callback.answer("⬆️ ارتقای سرویس به زودی فعال می‌شود.", show_alert=True)
+
+
 @router.callback_query(F.data.startswith("sub:traffic:"))
 async def refresh_traffic(callback: CallbackQuery, db_user: User):
     """Refresh traffic info from panel."""

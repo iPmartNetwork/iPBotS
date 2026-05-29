@@ -240,6 +240,106 @@ async def server_detail(callback: CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data.startswith("admin:server:edit:"))
+async def edit_server(callback: CallbackQuery, state: FSMContext):
+    """Start editing server."""
+    server_id = int(callback.data.split(":")[3])
+    await state.update_data(edit_server_id=server_id)
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    async with get_session() as session:
+        server = await session.get(Server, server_id)
+
+    if not server:
+        await callback.answer("⚠️ سرور یافت نشد.", show_alert=True)
+        return
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="📍 تغییر لوکیشن", callback_data=f"admin:server:setloc:{server_id}"))
+    builder.row(InlineKeyboardButton(text="🏳️ تغییر پرچم", callback_data=f"admin:server:setflag:{server_id}"))
+    builder.row(InlineKeyboardButton(text="👥 حداکثر کاربر", callback_data=f"admin:server:setmax:{server_id}"))
+    builder.row(InlineKeyboardButton(text="⭐ پیش‌فرض/غیرپیش‌فرض", callback_data=f"admin:server:toggledefault:{server_id}"))
+    builder.row(InlineKeyboardButton(text="🔙 بازگشت", callback_data=f"admin:server:detail:{server_id}"))
+
+    await callback.message.edit_text(
+        f"✏️ <b>ویرایش سرور: {server.name}</b>",
+        reply_markup=builder.as_markup()
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:server:toggledefault:"))
+async def toggle_default_server(callback: CallbackQuery):
+    """Toggle server default status."""
+    server_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        server = await session.get(Server, server_id)
+        if server:
+            server.is_default = not server.is_default
+            status = "پیش‌فرض ⭐" if server.is_default else "عادی"
+
+    await callback.answer(f"سرور {status} شد", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("admin:server:setloc:"))
+async def set_server_location(callback: CallbackQuery, state: FSMContext):
+    """Set server location."""
+    server_id = int(callback.data.split(":")[3])
+    await state.update_data(edit_server_id=server_id, edit_field="location")
+    await state.set_state(AdminStates.setting_value)
+    await callback.message.edit_text("📍 لوکیشن جدید را وارد کنید:\n(مثال: آلمان، فرانکفورت)")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:server:setflag:"))
+async def set_server_flag(callback: CallbackQuery, state: FSMContext):
+    """Set server flag emoji."""
+    server_id = int(callback.data.split(":")[3])
+    await state.update_data(edit_server_id=server_id, edit_field="flag")
+    await state.set_state(AdminStates.setting_value)
+    await callback.message.edit_text("🏳️ ایموجی پرچم را ارسال کنید:\n(مثال: 🇩🇪)")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:server:setmax:"))
+async def set_server_max_users(callback: CallbackQuery, state: FSMContext):
+    """Set server max users."""
+    server_id = int(callback.data.split(":")[3])
+    await state.update_data(edit_server_id=server_id, edit_field="max_users")
+    await state.set_state(AdminStates.setting_value)
+    await callback.message.edit_text("👥 حداکثر تعداد کاربر:\n(0 = نامحدود)")
+    await callback.answer()
+
+
+@router.message(AdminStates.setting_value)
+async def process_setting_value(message: Message, state: FSMContext):
+    """Process server edit value."""
+    data = await state.get_data()
+    server_id = data.get("edit_server_id")
+    field = data.get("edit_field")
+    value = message.text.strip()
+
+    async with get_session() as session:
+        server = await session.get(Server, server_id)
+        if server:
+            if field == "location":
+                server.location = value
+            elif field == "flag":
+                server.flag = value
+            elif field == "max_users":
+                try:
+                    server.max_users = int(value)
+                except ValueError:
+                    await message.answer("❌ عدد وارد کنید.")
+                    return
+
+    await message.answer(f"✅ {field} بروزرسانی شد.")
+    await state.clear()
+
+
 @router.callback_query(F.data.startswith("admin:server:test:"))
 async def test_server(callback: CallbackQuery):
     """Test server connection."""

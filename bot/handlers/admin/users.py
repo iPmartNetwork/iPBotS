@@ -273,6 +273,21 @@ async def ban_user_start(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@router.callback_query(F.data.startswith("admin:user:unban:"))
+async def unban_user(callback: CallbackQuery):
+    """Unban a user."""
+    user_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        user = await session.get(User, user_id)
+        if user:
+            user.is_banned = False
+            user.ban_reason = None
+
+    await callback.answer("✅ کاربر رفع مسدودی شد.", show_alert=True)
+    await callback.message.edit_text("✅ کاربر رفع مسدودی شد.")
+
+
 @router.message(AdminStates.user_ban_reason)
 async def ban_user_process(message: Message, state: FSMContext):
     """Process user ban."""
