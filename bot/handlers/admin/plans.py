@@ -66,6 +66,39 @@ async def toggle_plan(callback: CallbackQuery):
     await callback.answer(f"پلن {new_status} شد", show_alert=True)
 
 
+@router.callback_query(F.data == "admin:plans:list")
+async def plans_list_callback(callback: CallbackQuery):
+    """Show plans list via callback."""
+    async with get_session() as session:
+        stmt = select(Plan).order_by(Plan.sort_order, Plan.id)
+        result = await session.execute(stmt)
+        plans = result.scalars().all()
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+    text = "📋 <b>لیست پلن‌ها</b>\n\n"
+
+    if plans:
+        for plan in plans:
+            status = "✅" if plan.is_active else "❌"
+            text += f"{status} <b>{plan.name}</b> | {plan.display_data} | {plan.price:,}ت\n"
+            builder.row(
+                InlineKeyboardButton(
+                    text=f"{'✅' if plan.is_active else '❌'} {plan.name}",
+                    callback_data=f"admin:plan:edit:{plan.id}",
+                )
+            )
+    else:
+        text += "پلنی وجود ندارد.\n"
+
+    builder.row(InlineKeyboardButton(text="➕ پلن جدید", callback_data="admin:plan:add"))
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith("admin:plan:edit:"))
 async def edit_plan_menu(callback: CallbackQuery):
     """Show plan edit options."""
@@ -86,6 +119,8 @@ async def edit_plan_menu(callback: CallbackQuery):
     builder.row(InlineKeyboardButton(text=f"💰 قیمت: {plan.price:,}ت", callback_data=f"admin:plan:setprice:{plan_id}"))
     builder.row(InlineKeyboardButton(text=f"📊 حجم: {plan.data_limit_gb}GB", callback_data=f"admin:plan:setdata:{plan_id}"))
     builder.row(InlineKeyboardButton(text=f"⏱️ مدت: {plan.duration_days}d", callback_data=f"admin:plan:setduration:{plan_id}"))
+    builder.row(InlineKeyboardButton(text=f"📁 دسته‌بندی: {plan.category_id or 'ندارد'}", callback_data=f"admin:plan:setcat:{plan_id}"))
+    builder.row(InlineKeyboardButton(text=f"🖥️ سرور: {plan.server_id or 'پیش‌فرض'}", callback_data=f"admin:plan:setserver:{plan_id}"))
     builder.row(InlineKeyboardButton(text="🗑️ حذف پلن", callback_data=f"admin:plan:delete:{plan_id}"))
     builder.row(InlineKeyboardButton(text="🔙 بازگشت", callback_data="admin:plans:list"))
 
@@ -267,3 +302,91 @@ async def process_new_category(message: Message, state: FSMContext):
 
     await message.answer(f"✅ دسته‌بندی «{name}» ایجاد شد.")
     await state.clear()
+
+
+@router.callback_query(F.data.startswith("admin:plan:setcat:"))
+async def set_plan_category(callback: CallbackQuery, state: FSMContext):
+    """Set plan category."""
+    plan_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        stmt = select(PlanCategory).where(PlanCategory.is_active == True)
+        result = await session.execute(stmt)
+        categories = result.scalars().all()
+
+    if not categories:
+        await callback.answer("⚠️ ابتدا یک دسته‌بندی بسازید.", show_alert=True)
+        return
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+    for cat in categories:
+        builder.row(InlineKeyboardButton(
+            text=f"{cat.icon} {cat.name}",
+            callback_data=f"admin:plan:assigncat:{plan_id}:{cat.id}"
+        ))
+
+    await callback.message.edit_text("📁 دسته‌بندی را انتخاب کنید:", reply_markup=builder.as_markup())
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:plan:assigncat:"))
+async def assign_plan_category(callback: CallbackQuery):
+    """Assign category to plan."""
+    parts = callback.data.split(":")
+    plan_id = int(parts[3])
+    cat_id = int(parts[4])
+
+    async with get_session() as session:
+        plan = await session.get(Plan, plan_id)
+        if plan:
+            plan.category_id = cat_id
+
+    await callback.answer("✅ دسته‌بندی تخصیص داده شد.", show_alert=True)
+    await callback.message.edit_text("✅ دسته‌بندی پلن بروزرسانی شد.")
+
+
+@router.callback_query(F.data.startswith("admin:plan:setserver:"))
+async def set_plan_server(callback: CallbackQuery):
+    """Set plan server."""
+    plan_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        stmt = select(Server).where(Server.is_active == True)
+        result = await session.execute(stmt)
+        servers = result.scalars().all()
+
+    if not servers:
+        await callback.answer("⚠️ سروری وجود ندارد.", show_alert=True)
+        return
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+    for srv in servers:
+        builder.row(InlineKeyboardButton(
+            text=f"{srv.flag} {srv.name}",
+            callback_data=f"admin:plan:assignsrv:{plan_id}:{srv.id}"
+        ))
+
+    await callback.message.edit_text("🖥️ سرور را انتخاب کنید:", reply_markup=builder.as_markup())
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:plan:assignsrv:"))
+async def assign_plan_server(callback: CallbackQuery):
+    """Assign server to plan."""
+    parts = callback.data.split(":")
+    plan_id = int(parts[3])
+    srv_id = int(parts[4])
+
+    async with get_session() as session:
+        plan = await session.get(Plan, plan_id)
+        if plan:
+            plan.server_id = srv_id
+
+    await callback.answer("✅ سرور تخصیص داده شد.", show_alert=True)
+    await callback.message.edit_text("✅ سرور پلن بروزرسانی شد.")

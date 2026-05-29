@@ -18,6 +18,29 @@ async def cmd_start(message: Message, db_user: User, state: FSMContext):
     # Clear any active state
     await state.clear()
 
+    # Check for deep link to plan
+    if message.text:
+        parts = message.text.split()
+        if len(parts) > 1:
+            param = parts[1]
+            if param.startswith("plan_"):
+                try:
+                    plan_id = int(param.replace("plan_", ""))
+                    # Show plan detail directly
+                    from core.database.models import Plan
+                    from core.database.engine import get_session
+                    async with get_session() as session:
+                        plan = await session.get(Plan, plan_id)
+                    if plan:
+                        from bot.keyboards.user_kb import UserKeyboards
+                        await message.answer(
+                            f"📋 <b>{plan.name}</b>\n💰 {plan.final_price:,} تومان",
+                            reply_markup=UserKeyboards.plan_detail(plan_id),
+                        )
+                        return
+                except (ValueError, Exception):
+                    pass
+
     welcome_text = (
         f"👋 سلام <b>{db_user.full_name}</b>!\n\n"
         f"🚀 به ربات فروش VPN خوش آمدید.\n\n"

@@ -162,7 +162,7 @@ class UserKeyboards:
             status_icon = "✅" if sub.is_active else "❌"
             builder.row(
                 InlineKeyboardButton(
-                    text=f"{status_icon} {sub.plan.name} | {sub.remaining_days} روز",
+                    text=f"{status_icon} {sub.plan.name if sub.plan else 'تست رایگان'} | {sub.remaining_days} روز",
                     callback_data=f"sub:detail:{sub.id}",
                 )
             )

@@ -224,3 +224,44 @@ async def wallet_withdraw(callback: CallbackQuery, state: FSMContext, db_user: U
     )
     await state.set_state(UserStates.wallet_withdraw_amount)
     await callback.answer()
+
+
+@router.callback_query(F.data == "wallet:pay:card2card")
+async def wallet_pay_card2card(callback: CallbackQuery, state: FSMContext, db_user: User):
+    """Charge wallet via card2card."""
+    data = await state.get_data()
+    amount = data.get("charge_amount", 0)
+
+    if not amount:
+        await callback.answer("⚠️ خطا.", show_alert=True)
+        await state.clear()
+        return
+
+    from core.services.payment.card2card import Card2CardService
+    card_service = Card2CardService()
+    info = card_service.get_payment_info(amount)
+
+    from core.database.models import Order, OrderType, OrderStatus
+
+    async with get_session() as session:
+        order = Order(
+            user_id=db_user.id,
+            order_type=OrderType.WALLET_CHARGE,
+            status=OrderStatus.PENDING,
+            amount=amount,
+            original_amount=amount,
+            payment_method="card2card",
+        )
+        session.add(order)
+        await session.flush()
+        order_id = order.id
+
+    await callback.message.edit_text(
+        f"{info}\n\n"
+        f"💰 شارژ کیف پول: {amount:,} تومان\n\n"
+        f"لطفاً پس از واریز، تصویر رسید را ارسال کنید."
+    )
+
+    await state.set_state(UserStates.card2card_receipt)
+    await state.update_data(order_id=order_id)
+    await callback.answer()

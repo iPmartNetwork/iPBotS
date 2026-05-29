@@ -683,3 +683,32 @@ async def _create_subscription(callback: CallbackQuery, db_user: User, plan_id: 
     success_text += "📱 لینک بالا را در اپلیکیشن V2Ray خود وارد کنید."
 
     await callback.message.answer(success_text)
+
+    # Post to notification channel
+    from bot.config import settings as app_settings
+    if app_settings.SUPPORT_CHAT_ID:
+        try:
+            from bot.loader import bot as notify_bot
+            channel_text = (
+                f"🛒 <b>خرید جدید!</b>\n\n"
+                f"📋 پلن: {plan.name}\n"
+                f"💰 مبلغ: {plan.final_price:,} تومان\n"
+                f"🖥️ سرور: {server.flag} {server.name}"
+            )
+            await notify_bot.send_message(app_settings.SUPPORT_CHAT_ID, channel_text)
+        except Exception:
+            pass
+
+
+@router.callback_query(F.data.startswith("order:cancel:"))
+async def cancel_order(callback: CallbackQuery):
+    """Cancel a pending order."""
+    order_id = int(callback.data.split(":")[2])
+
+    async with get_session() as session:
+        order = await session.get(Order, order_id)
+        if order and order.status == OrderStatus.PENDING:
+            order.status = OrderStatus.CANCELLED
+
+    await callback.message.edit_text("❌ سفارش لغو شد.")
+    await callback.answer()

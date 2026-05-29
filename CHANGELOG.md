@@ -2,6 +2,45 @@
 
 All notable changes to iPBotS will be documented in this file.
 
+## [1.0.0-rc2] - 2026-05-29
+
+### 🔴 Critical Fixes
+- Auto-create subscription after card2card payment approval (full panel integration)
+- Nullable plan_id handling for trial subscriptions (no more crashes)
+- `admin:plans:list` callback handler added (back button works)
+- Auth middleware error handling (bot doesn't crash if DB is down)
+- Order cancel handler (`order:cancel:` callback)
+
+### 🟠 Important UX Improvements
+- Admin: Assign category to plan (from edit menu)
+- Admin: Assign server to plan (from edit menu)
+- Admin: View user wallet info with transactions
+- Wallet: Card-to-card charge flow
+- Deep Link support (`/start plan_5` → direct to plan)
+- Notification channel posting on each purchase
+- Rebuy expired subscription handler
+
+### 🟡 Improvements
+- Graceful error handling in auth middleware
+- Subscription detail shows "تست رایگان" for trial subs
+- All broken callback handlers now have proper responses
+
+### 🔧 Previous (rc1) Fixes Included
+- Password encryption for panel credentials
+- Referral bonus auto-applied on purchase
+- Loyalty points auto-awarded on purchase
+- Auto-renew with panel update
+- Card2Card receipt handler with admin notification
+- Crypto payment handlers (NowPayments)
+- Admin: Edit plan (name/price/data/duration/category/server/delete)
+- Admin: Edit server (location/flag/max_users/toggle default)
+- Admin: User unban button
+- Docker Compose V2 compatibility
+- Webhook mode handler registration fix
+- FSM state conflicts resolved
+
+---
+
 ## [1.0.0-rc1] - 2026-05-29
 
 ### 🚀 Initial Release Candidate

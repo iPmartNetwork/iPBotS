@@ -8,7 +8,7 @@ from sqlalchemy import select
 from bot.filters.admin import AdminFilter
 from bot.keyboards.admin_kb import AdminKeyboards
 from core.database.engine import get_session
-from core.database.models import Payment, PaymentStatus, Order, OrderStatus, User
+from core.database.models import Payment, PaymentStatus, Order, OrderStatus, User, Subscription, SubscriptionStatus
 
 router = Router(name="admin_payments")
 router.message.filter(AdminFilter())
@@ -110,14 +110,84 @@ async def approve_payment(callback: CallbackQuery):
             pass
 
         # Auto-create subscription for plan purchases
-        if order and order.plan_id and order.status == OrderStatus.PAID:
+        if order and order.plan_id and user:
             try:
                 await bot.send_message(
                     user.telegram_id,
                     "🔄 سرویس شما در حال فعال‌سازی است..."
                 )
-            except Exception:
-                pass
+
+                from datetime import datetime, timezone, timedelta
+                from core.database.models import Plan, Server, Subscription, SubscriptionStatus
+                from core.services.panel.xui import XUIService
+                from core.services.panel.hiddify import HiddifyService
+                from core.services.panel.marzban import MarzbanService
+                from core.database.models.server import PanelType
+
+                async with get_session() as session2:
+                    plan = await session2.get(Plan, order.plan_id)
+                    if plan:
+                        # Get server
+                        server = None
+                        if plan.server_id:
+                            server = await session2.get(Server, plan.server_id)
+                        else:
+                            from sqlalchemy import select as sel2
+                            srv_stmt = sel2(Server).where(Server.is_default == True, Server.is_active == True)
+                            srv_result = await session2.execute(srv_stmt)
+                            server = srv_result.scalar_one_or_none()
+
+                        if server:
+                            email = f"user_{user.telegram_id}_{order.id}"
+                            if server.panel_type == PanelType.XUI:
+                                panel_svc = XUIService(host=server.host, port=server.port, username=server.username, password=server.password, api_path=server.api_path)
+                            elif server.panel_type == PanelType.MARZBAN:
+                                panel_svc = MarzbanService(host=server.host, port=server.port, username=server.username, password=server.password)
+                            else:
+                                panel_svc = HiddifyService(host=server.host, port=server.port, username=server.username, password=server.password, hiddify_api_key=server.hiddify_api_key)
+
+                            client = await panel_svc.add_client(
+                                inbound_id=plan.inbound_id or 1,
+                                email=email,
+                                data_limit_gb=plan.data_limit_gb,
+                                expire_days=plan.duration_days,
+                                ip_limit=plan.ip_limit,
+                            )
+
+                            if client:
+                                sub_url = await panel_svc.get_subscription_url(client.client_id)
+                                now = datetime.now(timezone.utc)
+                                subscription = Subscription(
+                                    user_id=user.id,
+                                    plan_id=plan.id,
+                                    server_id=server.id,
+                                    order_id=order.id,
+                                    panel_client_id=client.client_id,
+                                    panel_email=email,
+                                    inbound_id=plan.inbound_id or 1,
+                                    subscription_url=sub_url,
+                                    data_limit_bytes=plan.data_limit_gb * 1024**3 if plan.data_limit_gb > 0 else 0,
+                                    ip_limit=plan.ip_limit,
+                                    start_date=now,
+                                    expire_date=now + timedelta(days=plan.duration_days),
+                                    status=SubscriptionStatus.ACTIVE,
+                                )
+                                session2.add(subscription)
+
+                                # Update order status
+                                order_obj = await session2.get(Order, order.id)
+                                if order_obj:
+                                    order_obj.status = OrderStatus.COMPLETED
+
+                                await bot.send_message(
+                                    user.telegram_id,
+                                    f"✅ <b>سرویس فعال شد!</b>\n\n"
+                                    f"📋 پلن: {plan.name}\n"
+                                    f"🔗 لینک:\n<code>{sub_url}</code>"
+                                )
+            except Exception as e:
+                from loguru import logger
+                logger.error(f"Auto-create subscription failed: {e}")
 
     await callback.answer("✅ تأیید شد")
 

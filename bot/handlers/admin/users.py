@@ -376,3 +376,42 @@ async def user_subscriptions(callback: CallbackQuery):
 
     await callback.message.edit_text(text)
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:user:wallet:"))
+async def user_wallet_info(callback: CallbackQuery):
+    """Show user wallet info."""
+    user_id = int(callback.data.split(":")[3])
+
+    async with get_session() as session:
+        wallet_stmt = select(Wallet).where(Wallet.user_id == user_id)
+        wallet_result = await session.execute(wallet_stmt)
+        wallet = wallet_result.scalar_one_or_none()
+
+        if not wallet:
+            await callback.answer("کیف پول خالی.", show_alert=True)
+            return
+
+        tx_stmt = (
+            select(WalletTransaction)
+            .where(WalletTransaction.wallet_id == wallet.id)
+            .order_by(WalletTransaction.id.desc())
+            .limit(5)
+        )
+        tx_result = await session.execute(tx_stmt)
+        transactions = tx_result.scalars().all()
+
+    text = (
+        f"💰 <b>کیف پول کاربر</b>\n\n"
+        f"💵 موجودی: {wallet.balance:,} تومان\n"
+        f"📥 واریز: {wallet.total_deposited:,} تومان\n"
+        f"📤 خرج: {wallet.total_spent:,} تومان\n\n"
+    )
+
+    if transactions:
+        text += "📜 <b>آخرین تراکنش‌ها:</b>\n"
+        for tx in transactions:
+            text += f"  • {tx.amount:,}ت | {tx.description or tx.transaction_type.value}\n"
+
+    await callback.message.edit_text(text)
+    await callback.answer()

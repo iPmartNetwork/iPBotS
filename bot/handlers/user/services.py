@@ -91,12 +91,14 @@ async def show_subscription_detail(callback: CallbackQuery, db_user: User):
         SubscriptionStatus.PENDING: "⏳ در انتظار",
     }
 
+    plan_name = sub.plan.name if sub.plan else "تست رایگان"
+
     # Traffic bar
     traffic_bar = _create_progress_bar(sub.traffic_percent)
 
     detail_text = (
         f"📋 <b>جزئیات سرویس</b>\n\n"
-        f"📦 پلن: {sub.plan.name}\n"
+        f"📦 پلن: {plan_name}\n"
         f"🖥️ سرور: {sub.server.flag} {sub.server.name}\n"
         f"📊 وضعیت: {status_map.get(sub.status, sub.status.value)}\n\n"
         f"📈 <b>مصرف ترافیک:</b>\n"
@@ -243,3 +245,37 @@ def _create_progress_bar(percent: int, length: int = 10) -> str:
     empty = length - filled
     bar = "█" * filled + "░" * empty
     return f"[{bar}] {percent}%"
+
+
+@router.callback_query(F.data.startswith("sub:rebuy:"))
+async def rebuy_subscription(callback: CallbackQuery, db_user: User):
+    """Rebuy an expired subscription's plan."""
+    sub_id = int(callback.data.split(":")[2])
+
+    async with get_session() as session:
+        sub = await session.get(Subscription, sub_id)
+        if not sub or not sub.plan_id:
+            await callback.answer("⚠️ پلن مرتبط یافت نشد.", show_alert=True)
+            return
+        plan_id = sub.plan_id
+
+    # Redirect to plan detail
+    from bot.keyboards.user_kb import UserKeyboards
+    from core.database.models import Plan
+
+    async with get_session() as session:
+        plan = await session.get(Plan, plan_id)
+
+    if not plan:
+        await callback.answer("⚠️ پلن دیگر موجود نیست.", show_alert=True)
+        return
+
+    await callback.message.edit_text(
+        f"🔄 <b>خرید مجدد</b>\n\n"
+        f"📋 پلن: {plan.name}\n"
+        f"📊 حجم: {plan.display_data}\n"
+        f"⏱️ مدت: {plan.display_duration}\n"
+        f"💰 قیمت: {plan.final_price:,} تومان",
+        reply_markup=UserKeyboards.plan_detail(plan_id),
+    )
+    await callback.answer()
