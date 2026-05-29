@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/نسخه-1.2.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/نسخه-1.3.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/لایسنس-AGPL--3.0-green?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Aiogram-3.x-009688?style=flat-square" alt="Aiogram">
@@ -92,6 +92,7 @@ ipbots backup     # پشتیبان‌گیری
 | NowPayments | ارز دیجیتال |
 | Cryptomus | ارز دیجیتال |
 | کارت به کارت | دستی با تأیید ادمین + فعال‌سازی خودکار |
+| IDPay | ریالی (آنلاین) |
 | کیف پول | موجودی داخلی |
 
 ### 👥 سیستم کاربری
@@ -132,6 +133,12 @@ ipbots backup     # پشتیبان‌گیری
 | هشدار ترافیک | اعلان در 80% مصرف |
 | اعلان انقضا | هشدار 3 روز قبل از انقضا |
 | لاگ عملیات | ثبت تمام اقدامات ادمین |
+| جوین اجباری | عضویت اجباری در کانال‌ها (نامحدود) |
+| ضد اسپم | محدودیت نرخ با Redis |
+| فوروارد همگانی | فوروارد عکس/ویدیو/فایل به همه |
+| پیام زمان‌بندی | ارسال پیام در زمان مشخص |
+| مدیریت پروتکل | تنظیم پروتکل‌ها برای هر سرور |
+| تنظیم متون | تغییر متون ربات توسط ادمین |
 
 ### 🖥️ پنل‌ها
 
@@ -140,6 +147,7 @@ ipbots backup     # پشتیبان‌گیری
 | 3x-ui (سنایی) | ✅ پشتیبانی کامل |
 | Hiddify Manager | ✅ پشتیبانی کامل |
 | Marzban (مرزبان) | ✅ پشتیبانی کامل |
+| Marzneshin (مرزنشین) | ✅ پشتیبانی کامل |
 
 ### 🌐 مینی اپ (WebApp)
 

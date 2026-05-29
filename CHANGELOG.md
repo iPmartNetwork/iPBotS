@@ -2,6 +2,26 @@
 
 All notable changes to iPBotS will be documented in this file.
 
+## [1.3.0] - 2026-05-29
+
+### ✨ New Features
+- **Forced Channel Join** - Unlimited mandatory channels with membership check
+- **Anti-Spam** - Redis-based rate limiting (5 msg/10s per user)
+- **Forward Broadcast** - Forward any message type (photo/video/file) to all users
+- **Marzneshin Panel** - Full support for Marzneshin (compatible with Marzban API)
+- **IDPay Gateway** - Iranian Rial payment via IDPay.ir
+- **Scheduled Messages** - Database model for time-based message scheduling
+- **Protocol Management** - Configure protocols per server (vless/vmess/trojan/ss)
+- **Bot Text Customization** - Admin-editable bot texts via database
+- **Phone Verification** - FSM state for phone number verification flow
+- **PanelType.MARZNESHIN** - Added to server enum
+
+### 🔧 Infrastructure
+- New middlewares: ForcedJoinMiddleware, AntiSpamMiddleware
+- Forward broadcast button in admin keyboard
+- IDPay config in .env.example
+- 4 new database models
+
 ## [1.2.0] - 2026-05-29
 
 ### ✨ New Features

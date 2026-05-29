@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.2.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.3.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/License-AGPL--3.0-green?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Aiogram-3.x-009688?style=flat-square" alt="Aiogram">
@@ -92,6 +92,7 @@ ipbots backup     # Database backup
 | NowPayments | Cryptocurrency |
 | Cryptomus | Cryptocurrency |
 | Card-to-Card | Manual with admin approval + auto-activation |
+| IDPay | Iranian Rial (online) |
 | Wallet | Internal balance |
 
 ### 👥 User System
@@ -132,6 +133,12 @@ ipbots backup     # Database backup
 | Traffic Alerts | Notify users at 80% traffic usage |
 | Expiry Notifications | Warn 3 days before subscription ends |
 | Audit Log | Track all admin actions |
+| Forced Channel Join | Require users to join channels before use |
+| Anti-Spam | Redis rate limiting (5 msg/10s) |
+| Forward Broadcast | Forward any message type to all users |
+| Scheduled Messages | Time-based message scheduling |
+| Protocol Management | Configure protocols per server |
+| Bot Text Customization | Admin can change all bot texts |
 
 ### �️ Panels
 
@@ -140,6 +147,7 @@ ipbots backup     # Database backup
 | 3x-ui (Sanaei) | ✅ Full support |
 | Hiddify Manager | ✅ Full support |
 | Marzban | ✅ Full support |
+| Marzneshin | ✅ Full support |
 
 ### 🌐 Mini App (WebApp)
 
