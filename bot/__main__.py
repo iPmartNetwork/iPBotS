@@ -21,14 +21,6 @@ async def on_startup():
     await create_tables()
     logger.info("Database tables ready.")
 
-    # Register middlewares
-    register_all_middlewares(dp)
-    logger.info("Middlewares registered.")
-
-    # Register handlers
-    register_all_handlers(dp)
-    logger.info("Handlers registered.")
-
     # Start scheduler
     start_scheduler()
     logger.info("Scheduler started.")
@@ -36,7 +28,7 @@ async def on_startup():
     # Set webhook or start polling
     if settings.WEBHOOK_ENABLED:
         webhook_url = f"{settings.WEBHOOK_HOST}{settings.WEBHOOK_PATH}"
-        await bot.set_webhook(webhook_url)
+        await bot.set_webhook(webhook_url, drop_pending_updates=True)
         logger.info(f"Webhook set: {webhook_url}")
     else:
         await bot.delete_webhook(drop_pending_updates=True)
@@ -45,9 +37,9 @@ async def on_startup():
     # Notify admins
     for admin_id in settings.admin_ids_list:
         try:
-            await bot.send_message(admin_id, "✅ ربات با موفقیت راه‌اندازی شد!")
-        except Exception:
-            pass
+            await bot.send_message(admin_id, "✅ ربات iPBotS با موفقیت راه‌اندازی شد!\n© iPmart Network")
+        except Exception as e:
+            logger.error(f"Failed to notify admin {admin_id}: {e}")
 
     logger.info("Bot started successfully!")
 
@@ -78,13 +70,24 @@ async def main():
         level="INFO",
     )
 
+    # Register middlewares and handlers BEFORE starting
+    register_all_middlewares(dp)
+    logger.info("Middlewares registered.")
+
+    register_all_handlers(dp)
+    logger.info("Handlers registered.")
+
+    # Register lifecycle hooks
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
     if not settings.WEBHOOK_ENABLED:
+        # Polling mode
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     else:
-        # Webhook mode - start FastAPI server
+        # Webhook mode - run startup manually then start server
+        await on_startup()
+
         from api.app import run_webhook_server
         await run_webhook_server()
 
