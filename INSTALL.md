@@ -107,8 +107,9 @@ ipbots update
 
 ```bash
 cd /opt/iPBotS
-git pull
-docker-compose up -d --build
+git fetch origin && git reset --hard origin/master
+docker compose build --no-cache
+docker compose up -d --force-recreate
 ```
 
 ## 🛠️ دستورات مفید

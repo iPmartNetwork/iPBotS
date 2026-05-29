@@ -600,7 +600,7 @@ start_services() {
     docker-compose down --remove-orphans 2>/dev/null || true
 
     # Build and start
-    docker-compose up -d --build >> "$LOG_FILE" 2>&1
+    docker-compose up -d --build --force-recreate >> "$LOG_FILE" 2>&1
 
     # Wait for PostgreSQL
     info "Waiting for database..."
@@ -915,7 +915,8 @@ do_update() {
     success "Configuration preserved"
 
     # Rebuild
-    docker-compose up -d --build >> "$LOG_FILE" 2>&1
+    docker-compose build --no-cache >> "$LOG_FILE" 2>&1
+    docker-compose up -d --force-recreate >> "$LOG_FILE" 2>&1
     success "Containers rebuilt"
 
     # Update database
