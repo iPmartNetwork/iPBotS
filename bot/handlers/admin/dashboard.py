@@ -104,6 +104,10 @@ async def show_dashboard(message: Message):
     )
 
     await message.answer(
+        "🛡️ <b>پنل مدیریت iPBotS</b>",
+        reply_markup=AdminKeyboards.main_menu(),
+    )
+    await message.answer(
         dashboard_text,
         reply_markup=AdminKeyboards.dashboard(),
     )
