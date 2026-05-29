@@ -16,6 +16,12 @@ router = Router(name="admin_servers")
 router.message.filter(AdminFilter())
 router.callback_query.filter(AdminFilter())
 
+ADMIN_MENU_BUTTONS = [
+    "📊 داشبورد", "👥 کاربران", "🖥️ سرورها", "📋 پلن‌ها",
+    "💳 پرداخت‌ها", "🎁 تخفیف‌ها", "📢 ارسال پیام", "🎫 تیکت‌ها",
+    "⚙️ تنظیمات", "🗄️ پشتیبان‌گیری", "🔙 منوی کاربری",
+]
+
 
 @router.message(F.text == "🖥️ سرورها")
 async def servers_menu(message: Message, state: FSMContext):
@@ -62,6 +68,10 @@ async def add_server_start(callback: CallbackQuery, state: FSMContext):
 @router.message(AdminStates.server_name)
 async def server_name_input(message: Message, state: FSMContext):
     """Process server name."""
+    if message.text and (message.text.startswith("/cancel") or message.text in ADMIN_MENU_BUTTONS):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
     await state.update_data(server_name=message.text.strip())
 
     from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
@@ -100,6 +110,10 @@ async def server_type_input(callback: CallbackQuery, state: FSMContext):
 @router.message(AdminStates.server_host)
 async def server_host_input(message: Message, state: FSMContext):
     """Process server host."""
+    if message.text and (message.text.startswith("/cancel") or message.text in ADMIN_MENU_BUTTONS):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
     host = message.text.strip().rstrip("/")
     if not host.startswith("http"):
         host = f"https://{host}"
@@ -111,6 +125,10 @@ async def server_host_input(message: Message, state: FSMContext):
 @router.message(AdminStates.server_port)
 async def server_port_input(message: Message, state: FSMContext):
     """Process server port."""
+    if message.text and (message.text.startswith("/cancel") or message.text in ADMIN_MENU_BUTTONS):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
     try:
         port = int(message.text.strip()) if message.text.strip() else 443
     except ValueError:
@@ -123,6 +141,10 @@ async def server_port_input(message: Message, state: FSMContext):
 @router.message(AdminStates.server_username)
 async def server_username_input(message: Message, state: FSMContext):
     """Process server username."""
+    if message.text and (message.text.startswith("/cancel") or message.text in ADMIN_MENU_BUTTONS):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
     await state.update_data(server_username=message.text.strip())
     await message.answer("🔑 پسورد پنل:")
     await state.set_state(AdminStates.server_password)
@@ -131,6 +153,10 @@ async def server_username_input(message: Message, state: FSMContext):
 @router.message(AdminStates.server_password)
 async def server_password_input(message: Message, state: FSMContext):
     """Process server password."""
+    if message.text and (message.text.startswith("/cancel") or message.text in ADMIN_MENU_BUTTONS):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
     await state.update_data(server_password=message.text.strip())
     data = await state.get_data()
 

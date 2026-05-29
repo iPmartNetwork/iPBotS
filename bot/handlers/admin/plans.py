@@ -15,6 +15,20 @@ router = Router(name="admin_plans")
 router.message.filter(AdminFilter())
 router.callback_query.filter(AdminFilter())
 
+# Menu buttons list for cancel detection
+ADMIN_MENU_BUTTONS = [
+    "📊 داشبورد", "👥 کاربران", "🖥️ سرورها", "📋 پلن‌ها",
+    "💳 پرداخت‌ها", "🎁 تخفیف‌ها", "📢 ارسال پیام", "🎫 تیکت‌ها",
+    "⚙️ تنظیمات", "🗄️ پشتیبان‌گیری", "🔙 منوی کاربری",
+]
+
+
+def is_cancel(text: str) -> bool:
+    """Check if message is a cancel command or menu button."""
+    if not text:
+        return False
+    return text.startswith("/cancel") or text in ADMIN_MENU_BUTTONS
+
 
 @router.message(F.text == "📋 پلن‌ها")
 async def plans_menu(message: Message, state: FSMContext):
@@ -153,7 +167,8 @@ async def add_plan_start(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(
         "📋 <b>افزودن پلن جدید</b>\n\n"
         "نام پلن را وارد کنید:\n"
-        "(مثال: پلن 30 گیگ ماهانه)"
+        "(مثال: پلن 30 گیگ ماهانه)\n\n"
+        "💡 برای لغو /cancel بزنید یا از منو استفاده کنید"
     )
     await state.set_state(AdminStates.plan_name)
     await callback.answer()
@@ -162,10 +177,20 @@ async def add_plan_start(callback: CallbackQuery, state: FSMContext):
 @router.message(AdminStates.plan_name)
 async def plan_name_input(message: Message, state: FSMContext):
     """Process plan name."""
+    if message.text and message.text.startswith("/") or message.text in [
+        "📊 داشبورد", "👥 کاربران", "🖥️ سرورها", "📋 پلن‌ها",
+        "💳 پرداخت‌ها", "🎁 تخفیف‌ها", "📢 ارسال پیام", "🎫 تیکت‌ها",
+        "⚙️ تنظیمات", "🗄️ پشتیبان‌گیری", "🔙 منوی کاربری"
+    ]:
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
+
     await state.update_data(plan_name=message.text.strip())
     await message.answer(
         "📊 حجم ترافیک (گیگابایت):\n"
-        "(0 = نامحدود)"
+        "(0 = نامحدود)\n\n"
+        "💡 برای لغو /cancel بزنید"
     )
     await state.set_state(AdminStates.plan_data)
 
@@ -173,6 +198,10 @@ async def plan_name_input(message: Message, state: FSMContext):
 @router.message(AdminStates.plan_data)
 async def plan_data_input(message: Message, state: FSMContext):
     """Process plan data limit."""
+    if is_cancel(message.text):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
     try:
         data_gb = int(message.text.strip())
     except ValueError:
@@ -180,13 +209,17 @@ async def plan_data_input(message: Message, state: FSMContext):
         return
 
     await state.update_data(plan_data=data_gb)
-    await message.answer("⏱️ مدت زمان (روز):\n(مثال: 30)")
+    await message.answer("⏱️ مدت زمان (روز):\n(مثال: 30)\n\n💡 برای لغو /cancel بزنید")
     await state.set_state(AdminStates.plan_duration)
 
 
 @router.message(AdminStates.plan_duration)
 async def plan_duration_input(message: Message, state: FSMContext):
     """Process plan duration."""
+    if is_cancel(message.text):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
     try:
         days = int(message.text.strip())
     except ValueError:
@@ -205,6 +238,10 @@ async def plan_duration_input(message: Message, state: FSMContext):
 @router.message(AdminStates.plan_price)
 async def plan_price_input(message: Message, state: FSMContext):
     """Process plan price."""
+    if is_cancel(message.text):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
     try:
         price = int(message.text.replace(",", "").strip())
     except ValueError:
@@ -223,6 +260,10 @@ async def plan_price_input(message: Message, state: FSMContext):
 @router.message(AdminStates.plan_ip_limit)
 async def plan_ip_limit_input(message: Message, state: FSMContext):
     """Process IP limit and create plan."""
+    if is_cancel(message.text):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
     try:
         ip_limit = int(message.text.strip()) if message.text.strip() else 1
     except ValueError:

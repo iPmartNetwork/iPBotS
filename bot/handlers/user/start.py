@@ -212,6 +212,17 @@ async def cmd_help(message: Message):
     await message.answer(help_text)
 
 
+@router.message(Command("cancel"))
+async def cmd_cancel(message: Message, state: FSMContext):
+    """Cancel any active operation."""
+    current_state = await state.get_state()
+    if current_state:
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+    else:
+        await message.answer("ℹ️ عملیات فعالی وجود ندارد.")
+
+
 @router.message(Command("id"))
 async def cmd_id(message: Message):
     """Show user Telegram ID."""
