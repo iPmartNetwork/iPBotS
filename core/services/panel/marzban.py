@@ -14,6 +14,10 @@ class MarzbanService(BasePanelService):
     """Service for interacting with Marzban panel API."""
 
     def __init__(self, host: str, port: int, username: str, password: str, **kwargs):
+        # Decrypt password if it's encrypted
+        from core.services.encryption import encryption
+        if password and len(password) > 50 and password.startswith("gAAAAA"):
+            password = encryption.decrypt(password)
         super().__init__(host, port, username, password, **kwargs)
         self._base_url = f"{host}:{port}"
         self._token: Optional[str] = None

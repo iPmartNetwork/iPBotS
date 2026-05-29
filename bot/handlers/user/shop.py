@@ -311,6 +311,77 @@ async def pay_card2card(callback: CallbackQuery, db_user: User, state: FSMContex
     await callback.answer()
 
 
+@router.message(UserStates.card2card_receipt, F.photo)
+async def process_card2card_receipt(message: Message, state: FSMContext, db_user: User):
+    """Process card2card payment receipt image."""
+    data = await state.get_data()
+    order_id = data.get("order_id")
+
+    if not order_id:
+        await message.answer("❌ خطا. لطفاً دوباره از فروشگاه اقدام کنید.")
+        await state.clear()
+        return
+
+    file_id = message.photo[-1].file_id
+
+    # Save payment record
+    from core.database.models import Payment, PaymentStatus, PaymentMethod
+
+    async with get_session() as session:
+        payment = Payment(
+            user_id=db_user.id,
+            order_id=order_id,
+            method=PaymentMethod.CARD2CARD,
+            status=PaymentStatus.PENDING,
+            amount=0,  # Will be set from order
+            card_receipt_image=file_id,
+        )
+
+        order = await session.get(Order, order_id)
+        if order:
+            payment.amount = order.amount
+
+        session.add(payment)
+        await session.flush()
+        payment_id = payment.id
+
+    await message.answer(
+        f"✅ رسید دریافت شد.\n\n"
+        f"شماره سفارش: #{order_id}\n"
+        f"⏳ در انتظار تأیید ادمین...\n\n"
+        f"پس از تأیید، سرویس شما فعال خواهد شد."
+    )
+
+    # Notify admins
+    from bot.loader import bot
+    from core.services.notification import NotificationService
+
+    notifier = NotificationService(bot)
+    await notifier.notify_admins(
+        f"🏦 <b>پرداخت کارت به کارت جدید</b>\n\n"
+        f"👤 کاربر: {db_user.mention}\n"
+        f"💰 مبلغ: {payment.amount:,} تومان\n"
+        f"📌 سفارش: #{order_id}\n\n"
+        f"برای تأیید/رد از منوی پرداخت‌ها اقدام کنید."
+    )
+
+    # Forward receipt image to admins
+    from bot.config import settings
+    for admin_id in settings.admin_ids_list:
+        try:
+            await bot.forward_message(admin_id, message.chat.id, message.message_id)
+        except Exception:
+            pass
+
+    await state.clear()
+
+
+@router.message(UserStates.card2card_receipt)
+async def process_card2card_receipt_text(message: Message, state: FSMContext):
+    """Handle non-photo message in card2card state."""
+    await message.answer("⚠️ لطفاً تصویر رسید بانکی را ارسال کنید (عکس).")
+
+
 @router.callback_query(F.data.startswith("pay:crypto:"))
 async def pay_crypto_options(callback: CallbackQuery):
     """Show crypto payment options."""
@@ -320,6 +391,73 @@ async def pay_crypto_options(callback: CallbackQuery):
         reply_markup=UserKeyboards.crypto_options(plan_id),
     )
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("pay:nowpay:"))
+async def pay_nowpayments(callback: CallbackQuery, db_user: User):
+    """Initiate NowPayments payment."""
+    plan_id = int(callback.data.split(":")[2])
+
+    async with get_session() as session:
+        plan = await session.get(Plan, plan_id)
+        if not plan:
+            await callback.answer("⚠️ پلن یافت نشد.", show_alert=True)
+            return
+
+        order = Order(
+            user_id=db_user.id,
+            plan_id=plan_id,
+            order_type=OrderType.NEW,
+            status=OrderStatus.PENDING,
+            amount=plan.final_price,
+            original_amount=plan.price,
+            discount_amount=plan.price - plan.final_price,
+            payment_method="nowpayments",
+        )
+        session.add(order)
+        await session.flush()
+        order_id = order.id
+
+    from core.services.payment.nowpayments import NowPaymentsService
+
+    nowpay = NowPaymentsService()
+    # Convert toman to USD approximately (or use a fixed rate)
+    usd_amount = max(1, plan.final_price // 60000)  # Rough conversion
+
+    result = await nowpay.create_payment(
+        amount=usd_amount,
+        description=f"Plan: {plan.name}",
+        order_id=str(order_id),
+    )
+
+    if result.success:
+        from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="🪙 پرداخت کریپتو", url=result.payment_url)],
+                [InlineKeyboardButton(text="🔙 انصراف", callback_data="shop:categories")],
+            ]
+        )
+        await callback.message.edit_text(
+            f"🪙 <b>پرداخت ارز دیجیتال</b>\n\n"
+            f"مبلغ: ~${usd_amount}\n"
+            f"سفارش: #{order_id}\n\n"
+            f"روی دکمه زیر کلیک کنید:",
+            reply_markup=kb,
+        )
+    else:
+        await callback.message.edit_text(f"❌ خطا: {result.error}")
+
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("pay:cryptomus:"))
+async def pay_cryptomus(callback: CallbackQuery, db_user: User):
+    """Initiate Cryptomus payment."""
+    plan_id = int(callback.data.split(":")[2])
+    # Similar to nowpayments - placeholder
+    await callback.answer("🪙 درگاه Cryptomus به زودی فعال می‌شود.", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("discount:apply:"))
@@ -461,6 +599,74 @@ async def _create_subscription(callback: CallbackQuery, db_user: User, plan_id: 
         user = user_result.scalar_one()
         user.total_purchases += 1
         user.total_spent += plan.final_price
+
+        # Apply referral bonus
+        if user.referred_by_id:
+            from core.database.models import Wallet, WalletTransaction, TransactionType
+
+            referrer = await session.get(User, user.referred_by_id)
+            if referrer:
+                from bot.config import settings as app_settings
+                bonus = int(plan.final_price * app_settings.REFERRAL_BONUS_PERCENT / 100)
+                if bonus > 0:
+                    referrer.referral_earnings += bonus
+
+                    # Also credit to referrer's wallet
+                    ref_wallet_stmt = select(Wallet).where(Wallet.user_id == referrer.id)
+                    ref_wallet_result = await session.execute(ref_wallet_stmt)
+                    ref_wallet = ref_wallet_result.scalar_one_or_none()
+
+                    if ref_wallet:
+                        ref_wallet.balance += bonus
+                        ref_wallet.total_deposited += bonus
+
+                        ref_tx = WalletTransaction(
+                            wallet_id=ref_wallet.id,
+                            transaction_type=TransactionType.REFERRAL_BONUS,
+                            amount=bonus,
+                            balance_after=ref_wallet.balance,
+                            description=f"پورسانت زیرمجموعه ({user.full_name})",
+                        )
+                        session.add(ref_tx)
+
+        # Award loyalty points
+        from core.database.models.loyalty import UserLoyalty, LoyaltyTransaction, LoyaltyConfig
+
+        config_stmt = select(LoyaltyConfig).where(LoyaltyConfig.is_active == True)
+        config_result = await session.execute(config_stmt)
+        loyalty_config = config_result.scalar_one_or_none()
+
+        if loyalty_config and loyalty_config.points_per_purchase_toman > 0:
+            points_earned = plan.final_price // loyalty_config.points_per_purchase_toman
+            if points_earned > 0:
+                loyalty_stmt = select(UserLoyalty).where(UserLoyalty.user_id == user.id)
+                loyalty_result = await session.execute(loyalty_stmt)
+                user_loyalty = loyalty_result.scalar_one_or_none()
+
+                if not user_loyalty:
+                    user_loyalty = UserLoyalty(user_id=user.id)
+                    session.add(user_loyalty)
+                    await session.flush()
+
+                user_loyalty.total_points += points_earned
+                user_loyalty.available_points += points_earned
+
+                # Update level
+                if user_loyalty.total_points >= 5000:
+                    user_loyalty.level = "diamond"
+                elif user_loyalty.total_points >= 2000:
+                    user_loyalty.level = "gold"
+                elif user_loyalty.total_points >= 500:
+                    user_loyalty.level = "silver"
+
+                loyalty_tx = LoyaltyTransaction(
+                    user_id=user.id,
+                    points=points_earned,
+                    transaction_type="purchase",
+                    description=f"خرید پلن: {plan.name}",
+                    reference_id=f"order_{order_id}",
+                )
+                session.add(loyalty_tx)
 
     # Send success message
     success_text = (

@@ -153,8 +153,12 @@ async def server_api_key_input(message: Message, state: FSMContext):
 
 async def _create_server(message: Message, state: FSMContext, data: dict):
     """Create server in database and test connection."""
+    from core.services.encryption import encryption
+
     type_map = {"xui": PanelType.XUI, "hiddify": PanelType.HIDDIFY, "marzban": PanelType.MARZBAN}
     panel_type = type_map.get(data["server_type"], PanelType.XUI)
+
+    encrypted_password = encryption.encrypt(data["server_password"])
 
     async with get_session() as session:
         server = Server(
@@ -163,7 +167,7 @@ async def _create_server(message: Message, state: FSMContext, data: dict):
             host=data["server_host"],
             port=data.get("server_port", 443),
             username=data["server_username"],
-            password=data["server_password"],
+            password=encrypted_password,
             hiddify_api_key=data.get("server_api_key"),
             is_default=True,
         )

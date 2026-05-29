@@ -159,7 +159,7 @@ async def process_auto_renewals():
     from core.database.engine import get_session
     from core.database.models import (
         Subscription, SubscriptionStatus, Wallet, WalletTransaction,
-        TransactionType, User
+        TransactionType, User, Server
     )
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
@@ -228,6 +228,38 @@ async def process_auto_renewals():
             if sub.plan.data_limit_gb > 0:
                 sub.data_limit_bytes = sub.plan.data_limit_gb * 1024 * 1024 * 1024
                 sub.used_traffic_bytes = 0
+
+            # Update on panel
+            try:
+                from core.services.panel.xui import XUIService
+                from core.services.panel.hiddify import HiddifyService
+                from core.services.panel.marzban import MarzbanService
+                from core.database.models.server import PanelType
+
+                server = await session.get(Server, sub.server_id) if sub.server_id else None
+                if server:
+                    if server.panel_type == PanelType.XUI:
+                        panel_svc = XUIService(host=server.host, port=server.port,
+                                              username=server.username, password=server.password,
+                                              api_path=server.api_path)
+                    elif server.panel_type == PanelType.MARZBAN:
+                        panel_svc = MarzbanService(host=server.host, port=server.port,
+                                                  username=server.username, password=server.password)
+                    else:
+                        panel_svc = HiddifyService(host=server.host, port=server.port,
+                                                  username=server.username, password=server.password,
+                                                  hiddify_api_key=server.hiddify_api_key)
+
+                    await panel_svc.update_client(
+                        inbound_id=sub.inbound_id,
+                        client_id=sub.panel_client_id,
+                        email=sub.panel_email,
+                        data_limit_gb=sub.plan.data_limit_gb if sub.plan else None,
+                        expire_days=sub.plan.duration_days if sub.plan else None,
+                        enable=True,
+                    )
+            except Exception as e:
+                logger.error(f"Auto-renew panel update failed for sub {sub.id}: {e}")
 
             renewed += 1
 

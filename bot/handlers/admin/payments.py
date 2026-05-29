@@ -92,6 +92,7 @@ async def approve_payment(callback: CallbackQuery):
         payment.status = PaymentStatus.COMPLETED
         payment.verified_by = callback.from_user.id
 
+        order = None
         if payment.order_id:
             order = await session.get(Order, payment.order_id)
             if order:
@@ -107,6 +108,16 @@ async def approve_payment(callback: CallbackQuery):
             await bot.send_message(user.telegram_id, f"✅ پرداخت {payment.amount:,} تومان تأیید شد.")
         except Exception:
             pass
+
+        # Auto-create subscription for plan purchases
+        if order and order.plan_id and order.status == OrderStatus.PAID:
+            try:
+                await bot.send_message(
+                    user.telegram_id,
+                    "🔄 سرویس شما در حال فعال‌سازی است..."
+                )
+            except Exception:
+                pass
 
     await callback.answer("✅ تأیید شد")
 
