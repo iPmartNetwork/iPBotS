@@ -23,8 +23,10 @@ router = Router(name="shop")
 
 
 @router.message(F.text == "🛒 خرید سرویس")
-async def show_shop(message: Message):
+async def show_shop(message: Message, state: FSMContext):
     """Show shop categories."""
+    await state.clear()
+
     async with get_session() as session:
         stmt = (
             select(PlanCategory)

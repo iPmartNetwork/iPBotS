@@ -2,6 +2,7 @@
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -14,8 +15,9 @@ router = Router(name="services")
 
 
 @router.message(F.text == "📦 سرویس‌های من")
-async def show_services(message: Message, db_user: User):
+async def show_services(message: Message, db_user: User, state: FSMContext):
     """Show user's subscriptions."""
+    await state.clear()
     async with get_session() as session:
         stmt = (
             select(Subscription)

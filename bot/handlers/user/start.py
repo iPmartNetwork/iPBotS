@@ -3,6 +3,7 @@
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 
 from bot.keyboards.user_kb import UserKeyboards
 from bot.config import settings
@@ -12,8 +13,11 @@ router = Router(name="start")
 
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, db_user: User):
+async def cmd_start(message: Message, db_user: User, state: FSMContext):
     """Handle /start command."""
+    # Clear any active state
+    await state.clear()
+
     welcome_text = (
         f"👋 سلام <b>{db_user.full_name}</b>!\n\n"
         f"🚀 به ربات فروش VPN خوش آمدید.\n\n"
@@ -26,8 +30,10 @@ async def cmd_start(message: Message, db_user: User):
 
 
 @router.message(F.text == "👤 حساب کاربری")
-async def show_profile(message: Message, db_user: User):
+async def show_profile(message: Message, db_user: User, state: FSMContext):
     """Show user profile."""
+    await state.clear()
+
     profile_text = (
         f"👤 <b>حساب کاربری</b>\n\n"
         f"🆔 شناسه: <code>{db_user.telegram_id}</code>\n"
@@ -43,13 +49,127 @@ async def show_profile(message: Message, db_user: User):
     await message.answer(profile_text)
 
 
-@router.callback_query(F.data == "main:menu")
-async def back_to_main(callback: CallbackQuery, db_user: User):
-    """Back to main menu."""
-    await callback.message.delete()
-    await callback.message.answer(
-        "🏠 منوی اصلی", reply_markup=UserKeyboards.main_menu()
+@router.message(F.text == "⭐ باشگاه مشتریان")
+async def show_loyalty_menu(message: Message, db_user: User, state: FSMContext):
+    """Show loyalty menu from reply keyboard."""
+    await state.clear()
+
+    from sqlalchemy import select
+    from core.database.engine import get_session
+    from core.database.models.loyalty import UserLoyalty
+
+    async with get_session() as session:
+        stmt = select(UserLoyalty).where(UserLoyalty.user_id == db_user.id)
+        result = await session.execute(stmt)
+        loyalty = result.scalar_one_or_none()
+
+    points = loyalty.available_points if loyalty else 0
+    total = loyalty.total_points if loyalty else 0
+    level = loyalty.level if loyalty else "bronze"
+
+    level_names = {"bronze": "🥉 برنزی", "silver": "🥈 نقره‌ای", "gold": "🥇 طلایی", "diamond": "💎 الماسی"}
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🎁 جوایز", callback_data="loyalty:rewards"))
+    builder.row(InlineKeyboardButton(text="📜 تاریخچه امتیاز", callback_data="loyalty:history"))
+    builder.row(InlineKeyboardButton(text="📊 نحوه کسب امتیاز", callback_data="loyalty:info"))
+
+    await message.answer(
+        f"⭐ <b>باشگاه مشتریان</b>\n\n"
+        f"{level_names.get(level, '⭐')} سطح: <b>{level_names.get(level, level)}</b>\n"
+        f"💎 امتیاز موجود: <b>{points:,}</b>\n"
+        f"📊 مجموع امتیاز: {total:,}\n\n"
+        f"💡 با هر خرید امتیاز کسب کنید و جوایز بگیرید!",
+        reply_markup=builder.as_markup(),
     )
+
+
+@router.message(F.text == "🏪 نمایندگی")
+async def show_reseller_menu(message: Message, db_user: User, state: FSMContext):
+    """Show reseller menu from reply keyboard."""
+    await state.clear()
+
+    from sqlalchemy import select
+    from core.database.engine import get_session
+    from core.database.models.reseller import Reseller, ResellerLevel
+
+    async with get_session() as session:
+        stmt = select(Reseller).where(Reseller.user_id == db_user.id)
+        result = await session.execute(stmt)
+        reseller = result.scalar_one_or_none()
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+
+    if not reseller:
+        builder.row(InlineKeyboardButton(text="📝 درخواست نمایندگی", callback_data="reseller:apply"))
+
+        await message.answer(
+            "🏪 <b>سیستم نمایندگی</b>\n\n"
+            "شما هنوز نماینده نیستید.\n"
+            "با ثبت درخواست نمایندگی، می‌توانید با تخفیف ویژه سرویس بخرید.\n\n"
+            "✅ مزایا:\n"
+            "• تخفیف ویژه روی تمام پلن‌ها\n"
+            "• پنل مدیریت مشتریان\n"
+            "• پشتیبانی اختصاصی",
+            reply_markup=builder.as_markup(),
+        )
+    else:
+        builder.row(InlineKeyboardButton(text="🛒 خرید برای مشتری", callback_data="reseller:buy"))
+        builder.row(InlineKeyboardButton(text="💰 مالی", callback_data="reseller:finance"))
+
+        await message.answer(
+            f"🏪 <b>پنل نمایندگی</b>\n\n"
+            f"🏷️ فروشگاه: {reseller.shop_name}\n"
+            f"💰 موجودی: {reseller.balance:,} تومان\n"
+            f"📊 کل فروش: {reseller.total_sales}",
+            reply_markup=builder.as_markup(),
+        )
+
+
+@router.message(F.text == "📖 آموزش اتصال")
+async def show_tutorial_menu(message: Message, state: FSMContext):
+    """Show tutorial menu from reply keyboard."""
+    await state.clear()
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+    builder.row(
+        InlineKeyboardButton(text="🤖 اندروید", callback_data="tutorial:android"),
+        InlineKeyboardButton(text="🍎 آیفون", callback_data="tutorial:ios"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="🖥️ ویندوز", callback_data="tutorial:windows"),
+        InlineKeyboardButton(text="💻 مک", callback_data="tutorial:mac"),
+    )
+
+    await message.answer(
+        "📖 <b>آموزش اتصال</b>\n\nپلتفرم خود را انتخاب کنید:",
+        reply_markup=builder.as_markup(),
+    )
+
+
+@router.callback_query(F.data == "main:menu")
+async def back_to_main(callback: CallbackQuery, db_user: User, state: FSMContext):
+    """Back to main menu."""
+    await state.clear()
+    await callback.message.edit_text("🏠 منوی اصلی")
+    await callback.message.answer("🏠 منوی اصلی", reply_markup=UserKeyboards.main_menu())
+    await callback.answer()
+
+
+@router.callback_query(F.data == "shop:back")
+async def shop_back(callback: CallbackQuery, state: FSMContext):
+    """Back from shop."""
+    await state.clear()
+    await callback.message.edit_text("🏠 منوی اصلی")
     await callback.answer()
 
 

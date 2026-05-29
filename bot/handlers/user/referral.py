@@ -2,6 +2,7 @@
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
 from sqlalchemy import select, func
 
 from bot.keyboards.user_kb import UserKeyboards
@@ -13,8 +14,9 @@ router = Router(name="referral")
 
 
 @router.message(F.text == "👥 زیرمجموعه")
-async def show_referral(message: Message, db_user: User):
+async def show_referral(message: Message, db_user: User, state: FSMContext):
     """Show referral info."""
+    await state.clear()
     async with get_session() as session:
         # Count referrals
         stmt = select(func.count(User.id)).where(User.referred_by_id == db_user.id)

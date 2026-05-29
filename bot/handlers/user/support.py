@@ -15,8 +15,9 @@ router = Router(name="support")
 
 
 @router.message(F.text == "📞 پشتیبانی")
-async def show_support(message: Message):
+async def show_support(message: Message, state: FSMContext):
     """Show support menu."""
+    await state.clear()
     await message.answer(
         "📞 <b>پشتیبانی</b>\n\n"
         "از طریق سیستم تیکت می‌توانید سوالات و مشکلات خود را مطرح کنید.",

@@ -14,8 +14,10 @@ router = Router(name="wallet")
 
 
 @router.message(F.text == "💰 کیف پول")
-async def show_wallet(message: Message, db_user: User):
+async def show_wallet(message: Message, db_user: User, state: FSMContext):
     """Show wallet info."""
+    await state.clear()
+
     async with get_session() as session:
         stmt = select(Wallet).where(Wallet.user_id == db_user.id)
         result = await session.execute(stmt)
