@@ -2,6 +2,25 @@
 
 All notable changes to iPBotS will be documented in this file.
 
+## [1.3.0-rc2] - 2026-05-30
+
+### 🐛 Critical Bug Fixes (Comprehensive Audit)
+- Fixed 11 missing callback handlers (admin:users:list, admin:servers:list, admin:settings:*, admin:cancel:*, admin:giftcard:add, admin:discount:list)
+- Fixed `plan_id` not nullable in Subscription model (trial subscriptions crashed)
+- Fixed `send_expiry_notifications` using internal user_id instead of telegram_id
+- Fixed `hmac.new` → `hmac.HMAC` in NowPayments IPN verification
+- Fixed `setting_value` state handler not detecting menu buttons (state conflict)
+- Added missing `wallet_withdraw_amount` handler (users were stuck in state)
+- Fixed `sub.server` None dereference crash in subscription detail
+
+## [1.3.0-rc1] - 2026-05-30
+
+### ✨ New Panel Support
+- **IBSng** - Radius/ISP panel service
+- **Mikrotik** - RouterOS REST API service
+- **WGDashboard** - WireGuard management panel
+- PanelType enum updated (now 7 panels total)
+
 ## [1.3.0] - 2026-05-29
 
 ### ✨ New Features
