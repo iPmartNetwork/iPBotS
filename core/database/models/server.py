@@ -16,6 +16,9 @@ class PanelType(str, enum.Enum):
     HIDDIFY = "hiddify"
     MARZBAN = "marzban"
     MARZNESHIN = "marzneshin"
+    IBSNG = "ibsng"
+    MIKROTIK = "mikrotik"
+    WGDASHBOARD = "wgdashboard"
 
 
 class Server(Base):
