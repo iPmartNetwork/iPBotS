@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.0.0-blue?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.2.0-blue?style=flat-square" alt="Version">
   <img src="https://img.shields.io/badge/License-AGPL--3.0-green?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Aiogram-3.x-009688?style=flat-square" alt="Aiogram">
@@ -68,7 +68,7 @@ ipbots backup     # Database backup
 
 ## ✨ Features
 
-### � Shop & Sales
+### 🛒 Shop & Sales
 
 | Feature | Description |
 |---------|-------------|
@@ -80,40 +80,47 @@ ipbots backup     # Database backup
 | Auto-Renewal | Automatic renewal from wallet before expiry |
 | Server Selection | Users choose their preferred location |
 | QR Code | Generate QR for subscription links |
+| Deep Link | Direct link to specific plan (`/start plan_5`) |
+| Subscription Upgrade | Upgrade to higher plan from bot |
+| Subscription Transfer | Transfer service to another user |
 
-### � Payments
+### 💳 Payments
 
 | Gateway | Type |
 |---------|------|
 | ZarinPal | Iranian Rial (online) |
 | NowPayments | Cryptocurrency |
 | Cryptomus | Cryptocurrency |
-| Card-to-Card | Manual with admin approval |
+| Card-to-Card | Manual with admin approval + auto-activation |
 | Wallet | Internal balance |
 
-### � User System
+### 👥 User System
 
 | Feature | Description |
 |---------|-------------|
 | Wallet | Deposit, withdraw, transaction history |
-| Referral | Invite friends, earn commission |
+| Referral | Invite friends, earn commission (auto-applied) |
 | Loyalty Points | Earn points per purchase, redeem rewards |
 | Reseller | Agency system with tiered discounts |
 | Tickets | Support ticket system |
 | Tutorials | Connection guides for all platforms |
+| Family Plan | Share subscription with family members |
+| Review/Rating | Rate service after purchase |
 
-### �️ Admin Panel
+### 🛡️ Admin Panel
 
 | Feature | Description |
 |---------|-------------|
 | Dashboard | Revenue, users, orders, real-time stats |
-| User Management | Search, ban, credit, message users |
+| User Management | Search, ban/unban, credit, message, wallet view |
 | Server Management | Add/edit/test/delete VPN servers |
-| Plan Management | Create plans, categories, pricing |
+| Plan Management | Create/edit/delete plans, assign category & server |
 | Payment Management | Approve/reject card-to-card payments |
 | Broadcast | Send messages to all/active/selected users |
 | Backup | Automatic + manual database backups |
 | Daily Reports | Auto-generated revenue & growth reports |
+| CSV Export | Export users and payments to CSV |
+| Status Page | Public server health page at `/status` |
 
 ### 🤖 Smart Features
 
