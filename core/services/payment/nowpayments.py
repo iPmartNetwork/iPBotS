@@ -101,7 +101,7 @@ class NowPaymentsService(BasePaymentService):
     def verify_ipn_signature(self, payload: dict, signature: str) -> bool:
         """Verify IPN callback signature."""
         sorted_payload = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-        computed = hmac.new(
+        computed = hmac.HMAC(
             self.ipn_secret.encode(),
             sorted_payload.encode(),
             hashlib.sha512,

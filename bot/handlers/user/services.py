@@ -100,7 +100,7 @@ async def show_subscription_detail(callback: CallbackQuery, db_user: User):
     detail_text = (
         f"📋 <b>جزئیات سرویس</b>\n\n"
         f"📦 پلن: {plan_name}\n"
-        f"🖥️ سرور: {sub.server.flag} {sub.server.name}\n"
+        f"🖥️ سرور: {sub.server.flag + ' ' + sub.server.name if sub.server else 'نامشخص'}\n"
         f"📊 وضعیت: {status_map.get(sub.status, sub.status.value)}\n\n"
         f"📈 <b>مصرف ترافیک:</b>\n"
         f"{traffic_bar}\n"

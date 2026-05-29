@@ -343,6 +343,11 @@ async def set_server_max_users(callback: CallbackQuery, state: FSMContext):
 @router.message(AdminStates.setting_value)
 async def process_setting_value(message: Message, state: FSMContext):
     """Process server edit value."""
+    if message.text and (message.text.startswith("/cancel") or message.text in ADMIN_MENU_BUTTONS):
+        await state.clear()
+        await message.answer("❌ عملیات لغو شد.")
+        return
+
     data = await state.get_data()
     server_id = data.get("edit_server_id")
     field = data.get("edit_field")
@@ -426,4 +431,19 @@ async def confirm_delete_server(callback: CallbackQuery):
             await session.delete(server)
 
     await callback.message.edit_text("✅ سرور حذف شد.")
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin:servers:list")
+async def servers_list_callback(callback: CallbackQuery):
+    """Back to servers list."""
+    async with get_session() as session:
+        stmt = select(Server).order_by(Server.id)
+        result = await session.execute(stmt)
+        servers = result.scalars().all()
+
+    await callback.message.edit_text(
+        "🖥️ <b>مدیریت سرورها</b>",
+        reply_markup=AdminKeyboards.server_list(servers),
+    )
     await callback.answer()

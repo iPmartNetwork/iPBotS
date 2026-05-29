@@ -319,3 +319,58 @@ async def manual_backup(message: Message, state: FSMContext):
         await message.answer("✅ پشتیبان‌گیری انجام شد.")
     except Exception as e:
         await message.answer(f"❌ خطا: {e}")
+
+
+@router.callback_query(F.data.startswith("admin:settings:"))
+async def settings_placeholder(callback: CallbackQuery):
+    """Settings sub-menu placeholder."""
+    await callback.answer("⚙️ این بخش به زودی فعال می‌شود.", show_alert=True)
+
+
+@router.callback_query(F.data == "admin:broadcast:select")
+async def broadcast_select_placeholder(callback: CallbackQuery):
+    """Broadcast to specific group - placeholder."""
+    await callback.answer("📋 ارسال به دسته خاص به زودی فعال می‌شود.", show_alert=True)
+
+
+@router.callback_query(F.data == "admin:giftcard:add")
+async def giftcard_add_placeholder(callback: CallbackQuery):
+    """Gift card creation - placeholder."""
+    await callback.answer("🎁 ساخت گیفت کارت به زودی فعال می‌شود.", show_alert=True)
+
+
+@router.callback_query(F.data == "admin:discount:list")
+async def discount_list_callback(callback: CallbackQuery):
+    """Show discount list via callback."""
+    from core.database.models import DiscountCode, DiscountType
+
+    async with get_session() as session:
+        stmt = select(DiscountCode).order_by(DiscountCode.id.desc()).limit(20)
+        result = await session.execute(stmt)
+        codes = result.scalars().all()
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+    text = "🎁 <b>کدهای تخفیف</b>\n\n"
+
+    if codes:
+        for code in codes:
+            status = "✅" if code.is_valid else "❌"
+            val = f"{code.value}%" if code.discount_type == DiscountType.PERCENT else f"{code.value:,}ت"
+            text += f"{status} <code>{code.code}</code> | {val}\n"
+    else:
+        text += "کدی وجود ندارد.\n"
+
+    builder.row(InlineKeyboardButton(text="➕ کد جدید", callback_data="admin:discount:add"))
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:cancel:"))
+async def cancel_action(callback: CallbackQuery):
+    """Cancel a pending action."""
+    await callback.message.edit_text("❌ عملیات لغو شد.")
+    await callback.answer()

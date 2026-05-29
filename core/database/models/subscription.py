@@ -36,7 +36,9 @@ class Subscription(Base):
 
     # User
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    plan_id: Mapped[int] = mapped_column(ForeignKey("plans.id"))
+    plan_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("plans.id"), nullable=True
+    )
     server_id: Mapped[int] = mapped_column(ForeignKey("servers.id"))
     order_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("orders.id"), nullable=True

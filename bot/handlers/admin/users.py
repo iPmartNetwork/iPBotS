@@ -423,3 +423,18 @@ async def user_wallet_info(callback: CallbackQuery):
 
     await callback.message.edit_text(text)
     await callback.answer()
+
+
+@router.callback_query(F.data == "admin:users:list")
+async def users_list_callback(callback: CallbackQuery):
+    """Back to users list."""
+    await callback.message.delete()
+    # Trigger the message handler
+    await callback.message.answer("👥 لیست کاربران بارگذاری شد. از منوی «👥 کاربران» استفاده کنید.")
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("admin:user:gift:"))
+async def gift_user_service(callback: CallbackQuery):
+    """Gift service to user - placeholder."""
+    await callback.answer("🎁 هدیه سرویس به زودی فعال می‌شود.", show_alert=True)

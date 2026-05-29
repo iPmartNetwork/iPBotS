@@ -226,6 +226,47 @@ async def wallet_withdraw(callback: CallbackQuery, state: FSMContext, db_user: U
     await callback.answer()
 
 
+@router.message(UserStates.wallet_withdraw_amount)
+async def process_withdraw_amount(message: Message, state: FSMContext, db_user: User):
+    """Process withdrawal amount."""
+    try:
+        amount = int(message.text.replace(",", "").strip())
+    except ValueError:
+        await message.answer("❌ عدد معتبر وارد کنید.")
+        return
+
+    if amount < 50000:
+        await message.answer("❌ حداقل مبلغ برداشت 50,000 تومان است.")
+        return
+
+    async with get_session() as session:
+        stmt = select(Wallet).where(Wallet.user_id == db_user.id)
+        result = await session.execute(stmt)
+        wallet = result.scalar_one_or_none()
+
+        if not wallet or wallet.balance < amount:
+            await message.answer("❌ موجودی کافی نیست.")
+            await state.clear()
+            return
+
+    await message.answer(
+        f"💸 درخواست برداشت {amount:,} تومان ثبت شد.\n"
+        f"⏳ پس از بررسی توسط مدیریت، مبلغ واریز خواهد شد."
+    )
+
+    # Notify admins
+    from bot.loader import bot
+    from core.services.notification import NotificationService
+    notifier = NotificationService(bot)
+    await notifier.notify_admins(
+        f"💸 <b>درخواست برداشت</b>\n\n"
+        f"👤 کاربر: {db_user.telegram_id}\n"
+        f"💰 مبلغ: {amount:,} تومان"
+    )
+
+    await state.clear()
+
+
 @router.callback_query(F.data == "wallet:pay:card2card")
 async def wallet_pay_card2card(callback: CallbackQuery, state: FSMContext, db_user: User):
     """Charge wallet via card2card."""

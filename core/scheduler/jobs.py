@@ -122,7 +122,7 @@ async def sync_traffic_from_panels():
 async def send_expiry_notifications():
     """Send notifications for subscriptions expiring soon."""
     from core.database.engine import get_session
-    from core.database.models import Subscription, SubscriptionStatus
+    from core.database.models import Subscription, SubscriptionStatus, User
     from sqlalchemy import select
     from datetime import datetime, timezone, timedelta
 
@@ -149,7 +149,10 @@ async def send_expiry_notifications():
         notifier = NotificationService(bot)
         for sub in expiring:
             days_left = (sub.expire_date - now).days
-            await notifier.notify_subscription_expiring(sub.user_id, days_left)
+            # Get user's telegram_id
+            user = await session.get(User, sub.user_id)
+            if user:
+                await notifier.notify_subscription_expiring(user.telegram_id, days_left)
 
     logger.info(f"Sent {len(expiring)} expiry notifications.")
 
