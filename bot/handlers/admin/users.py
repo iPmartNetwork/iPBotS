@@ -74,6 +74,14 @@ async def search_user(message: Message, state: FSMContext):
     """Search for a user."""
     query = message.text.strip().replace("@", "")
 
+    # If user pressed a menu button instead of searching, clear state and ignore
+    menu_buttons = ["📊 داشبورد", "👥 کاربران", "🖥️ سرورها", "📋 پلن‌ها", 
+                    "💳 پرداخت‌ها", "🎁 تخفیف‌ها", "📢 ارسال پیام", "🎫 تیکت‌ها",
+                    "⚙️ تنظیمات", "🗄️ پشتیبان‌گیری", "🔙 منوی کاربری"]
+    if query in menu_buttons or message.text in menu_buttons:
+        await state.clear()
+        return  # Let other handlers process it
+
     async with get_session() as session:
         try:
             telegram_id = int(query)
