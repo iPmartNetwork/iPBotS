@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     CRYPTOMUS_API_KEY: str = ""
     CRYPTOMUS_CALLBACK_URL: str = ""
 
+    # IDPay
+    IDPAY_API_KEY: str = ""
+    IDPAY_SANDBOX: bool = False
+    IDPAY_CALLBACK_URL: str = ""
+
     # Card to Card
     CARD2CARD_ENABLED: bool = False
     CARD2CARD_NUMBER: str = ""

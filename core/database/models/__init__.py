@@ -23,6 +23,10 @@ from core.database.models.server_monitoring import ServerStatus, LoadBalanceRule
 from core.database.models.bundle import Bundle, BundleItem
 from core.database.models.family_plan import FamilyGroup, FamilyMember
 from core.database.models.review import Review
+from core.database.models.forced_join import ForcedChannel
+from core.database.models.scheduled_message import ScheduledMessage
+from core.database.models.protocol_config import ProtocolConfig
+from core.database.models.bot_text import BotText
 
 __all__ = [
     "Base",
@@ -63,4 +67,8 @@ __all__ = [
     "FamilyGroup",
     "FamilyMember",
     "Review",
+    "ForcedChannel",
+    "ScheduledMessage",
+    "ProtocolConfig",
+    "BotText",
 ]

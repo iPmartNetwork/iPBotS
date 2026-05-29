@@ -229,6 +229,13 @@ async def cmd_id(message: Message):
     await message.answer(f"🆔 شناسه تلگرام شما: <code>{message.from_user.id}</code>")
 
 
+@router.callback_query(F.data == "check_join")
+async def check_join_callback(callback: CallbackQuery):
+    """Re-check channel membership."""
+    await callback.message.edit_text("✅ ممنون! حالا می‌توانید از ربات استفاده کنید.\n\nدستور /start را بزنید.")
+    await callback.answer()
+
+
 @router.callback_query(F.data == "noop")
 async def noop_callback(callback: CallbackQuery):
     """No-op callback for pagination info button."""

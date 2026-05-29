@@ -199,6 +199,11 @@ class AdminKeyboards:
             ),
         )
         builder.row(
+            InlineKeyboardButton(
+                text="↗️ فوروارد همگانی", callback_data="admin:broadcast:forward"
+            ),
+        )
+        builder.row(
             InlineKeyboardButton(text="🔙 بازگشت", callback_data="admin:menu")
         )
         return builder.as_markup()

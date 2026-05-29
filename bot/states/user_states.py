@@ -27,3 +27,6 @@ class UserStates(StatesGroup):
 
     # Transfer
     transfer_target = State()
+
+    # Phone verification
+    verify_phone = State()

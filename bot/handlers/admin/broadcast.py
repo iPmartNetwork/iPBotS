@@ -50,10 +50,22 @@ async def broadcast_active(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@router.callback_query(F.data == "admin:broadcast:forward")
+async def broadcast_forward_start(callback: CallbackQuery, state: FSMContext):
+    """Start forward broadcast."""
+    await state.update_data(broadcast_target="all", broadcast_type="forward")
+    await callback.message.edit_text(
+        "📢 <b>فوروارد همگانی</b>\n\n"
+        "پیام، عکس، ویدیو یا فایلی که می‌خواهید فوروارد شود را ارسال کنید:"
+    )
+    await state.set_state(AdminStates.broadcast_message)
+    await callback.answer()
+
+
 @router.message(AdminStates.broadcast_message)
 async def process_broadcast(message: Message, state: FSMContext):
     """Process and confirm broadcast."""
-    await state.update_data(broadcast_text=message.text)
+    await state.update_data(broadcast_text=message.text, broadcast_message_id=message.message_id, broadcast_chat_id=message.chat.id)
     data = await state.get_data()
     target = data.get("broadcast_target", "all")
 
@@ -90,6 +102,7 @@ async def send_broadcast(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     text = data.get("broadcast_text", "")
     target = data.get("broadcast_target", "all")
+    broadcast_type = data.get("broadcast_type", "text")
 
     await state.clear()
     await callback.message.edit_text("📢 در حال ارسال...")
@@ -109,9 +122,15 @@ async def send_broadcast(callback: CallbackQuery, state: FSMContext):
     failed = 0
     blocked = 0
 
+    broadcast_message_id = data.get("broadcast_message_id")
+    broadcast_chat_id = data.get("broadcast_chat_id")
+
     for user in users:
         try:
-            await bot.send_message(user.telegram_id, text)
+            if broadcast_type == "forward" and broadcast_message_id and broadcast_chat_id:
+                await bot.forward_message(user.telegram_id, broadcast_chat_id, broadcast_message_id)
+            else:
+                await bot.send_message(user.telegram_id, text)
             success += 1
         except Exception as e:
             if "blocked" in str(e).lower() or "deactivated" in str(e).lower():

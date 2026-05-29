@@ -15,6 +15,7 @@ class PanelType(str, enum.Enum):
     XUI = "3x-ui"
     HIDDIFY = "hiddify"
     MARZBAN = "marzban"
+    MARZNESHIN = "marzneshin"
 
 
 class Server(Base):
