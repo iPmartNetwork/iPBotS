@@ -18,9 +18,9 @@ router = Router(name="support")
 async def show_support(message: Message, state: FSMContext):
     """Show support menu."""
     await state.clear()
+    from core.services.bot_texts import get_text
     await message.answer(
-        "📞 <b>پشتیبانی</b>\n\n"
-        "از طریق سیستم تیکت می‌توانید سوالات و مشکلات خود را مطرح کنید.",
+        await get_text("support_title"),
         reply_markup=UserKeyboards.support_menu(),
     )
 

@@ -21,6 +21,11 @@ async def on_startup():
     await create_tables()
     logger.info("Database tables ready.")
 
+    # Load bot texts cache
+    from core.services.bot_texts import load_texts_cache
+    await load_texts_cache()
+    logger.info("Bot texts cache loaded.")
+
     # Start scheduler
     start_scheduler()
     logger.info("Scheduler started.")

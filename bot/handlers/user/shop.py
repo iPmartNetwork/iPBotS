@@ -37,11 +37,14 @@ async def show_shop(message: Message, state: FSMContext):
         categories = result.scalars().all()
 
     if not categories:
-        await message.answer("⚠️ در حال حاضر سرویسی موجود نیست.")
+        from core.services.bot_texts import get_text
+        await message.answer(await get_text("shop_empty"))
         return
 
+    from core.services.bot_texts import get_text
+    shop_text = await get_text("shop_title")
     await message.answer(
-        "🛒 <b>فروشگاه</b>\n\nدسته‌بندی مورد نظر خود را انتخاب کنید:",
+        shop_text,
         reply_markup=UserKeyboards.shop_categories(categories),
     )
 

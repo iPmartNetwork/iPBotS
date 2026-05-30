@@ -41,13 +41,8 @@ async def cmd_start(message: Message, db_user: User, state: FSMContext):
                 except (ValueError, Exception):
                     pass
 
-    welcome_text = (
-        f"👋 سلام <b>{db_user.full_name}</b>!\n\n"
-        f"🚀 به ربات فروش VPN خوش آمدید.\n\n"
-        f"از منوی زیر می‌توانید سرویس مورد نظر خود را خریداری کنید.\n\n"
-        f"📌 در صورت نیاز به راهنمایی، از بخش پشتیبانی استفاده کنید.\n\n"
-        f"<i>© iPmart Network</i>"
-    )
+    from core.services.bot_texts import get_text
+    welcome_text = await get_text("welcome", name=db_user.full_name)
 
     await message.answer(welcome_text, reply_markup=UserKeyboards.main_menu())
 
@@ -199,16 +194,8 @@ async def shop_back(callback: CallbackQuery, state: FSMContext):
 @router.message(Command("help"))
 async def cmd_help(message: Message):
     """Help command."""
-    help_text = (
-        "📖 <b>راهنمای ربات</b>\n\n"
-        "🛒 <b>خرید سرویس</b> - مشاهده و خرید پلن‌های VPN\n"
-        "📦 <b>سرویس‌های من</b> - مدیریت سرویس‌های فعال\n"
-        "💰 <b>کیف پول</b> - شارژ و مدیریت موجودی\n"
-        "👥 <b>زیرمجموعه</b> - لینک دعوت و درآمد\n"
-        "📞 <b>پشتیبانی</b> - ارسال تیکت\n"
-        "👤 <b>حساب کاربری</b> - اطلاعات حساب\n\n"
-        "💡 برای شروع خرید، روی «خرید سرویس» کلیک کنید."
-    )
+    from core.services.bot_texts import get_text
+    help_text = await get_text("help")
     await message.answer(help_text)
 
 

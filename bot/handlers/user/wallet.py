@@ -27,11 +27,12 @@ async def show_wallet(message: Message, db_user: User, state: FSMContext):
     total_deposited = wallet.total_deposited if wallet else 0
     total_spent = wallet.total_spent if wallet else 0
 
-    wallet_text = (
-        f"💰 <b>کیف پول</b>\n\n"
-        f"💵 موجودی: <b>{balance:,}</b> تومان\n"
-        f"📥 مجموع واریز: {total_deposited:,} تومان\n"
-        f"📤 مجموع خرید: {total_spent:,} تومان\n"
+    from core.services.bot_texts import get_text
+    wallet_text = await get_text(
+        "wallet_title",
+        balance=f"{balance:,}",
+        deposited=f"{total_deposited:,}",
+        spent=f"{total_spent:,}",
     )
 
     await message.answer(wallet_text, reply_markup=UserKeyboards.wallet_menu())
