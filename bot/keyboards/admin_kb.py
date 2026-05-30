@@ -236,7 +236,12 @@ class AdminKeyboards:
         builder = InlineKeyboardBuilder()
         builder.row(
             InlineKeyboardButton(
-                text="💳 درگاه‌های پرداخت", callback_data="admin:settings:payment"
+                text="💳 درگاه‌های پرداخت", callback_data="admin:settings:gateways"
+            ),
+        )
+        builder.row(
+            InlineKeyboardButton(
+                text="🔔 اعلان پرداخت (گروه)", callback_data="admin:settings:payment"
             ),
         )
         builder.row(

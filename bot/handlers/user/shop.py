@@ -355,26 +355,53 @@ async def process_card2card_receipt(message: Message, state: FSMContext, db_user
         f"پس از تأیید، سرویس شما فعال خواهد شد."
     )
 
-    # Notify admins
+    # Notify via payment group (if configured) or PV admins
     from bot.loader import bot
-    from core.services.notification import NotificationService
-
-    notifier = NotificationService(bot)
-    await notifier.notify_admins(
-        f"🏦 <b>پرداخت کارت به کارت جدید</b>\n\n"
-        f"👤 کاربر: {db_user.mention}\n"
-        f"💰 مبلغ: {payment.amount:,} تومان\n"
-        f"📌 سفارش: #{order_id}\n\n"
-        f"برای تأیید/رد از منوی پرداخت‌ها اقدام کنید."
-    )
-
-    # Forward receipt image to admins
+    from core.services.payment_notify import PaymentNotifyService
     from bot.config import settings
-    for admin_id in settings.admin_ids_list:
-        try:
-            await bot.forward_message(admin_id, message.chat.id, message.message_id)
-        except Exception:
-            pass
+
+    pay_notify = PaymentNotifyService(bot)
+
+    # Determine if this is wallet charge or direct purchase
+    plan_id = data.get("plan_id")
+
+    if plan_id:
+        # Direct purchase
+        await pay_notify.notify_card2card_purchase(
+            payment_id=payment_id,
+            user_name=db_user.full_name,
+            user_id=db_user.telegram_id,
+            amount=payment.amount,
+            plan_name=f"Plan #{plan_id}",
+            file_id=file_id,
+        )
+    else:
+        # Wallet charge
+        await pay_notify.notify_card2card_wallet(
+            payment_id=payment_id,
+            user_name=db_user.full_name,
+            user_id=db_user.telegram_id,
+            amount=payment.amount,
+            file_id=file_id,
+        )
+
+    # Also notify PV admins as fallback
+    if not settings.PAYMENT_GROUP_ID:
+        from core.services.notification import NotificationService
+
+        notifier = NotificationService(bot)
+        await notifier.notify_admins(
+            f"🏦 <b>پرداخت کارت به کارت جدید</b>\n\n"
+            f"👤 کاربر: {db_user.mention}\n"
+            f"💰 مبلغ: {payment.amount:,} تومان\n"
+            f"📌 سفارش: #{order_id}\n\n"
+            f"برای تأیید/رد از منوی پرداخت‌ها اقدام کنید."
+        )
+        for admin_id in settings.admin_ids_list:
+            try:
+                await bot.forward_message(admin_id, message.chat.id, message.message_id)
+            except Exception:
+                pass
 
     await state.clear()
 

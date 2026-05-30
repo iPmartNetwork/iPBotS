@@ -321,6 +321,41 @@ async def manual_backup(message: Message, state: FSMContext):
         await message.answer(f"❌ خطا: {e}")
 
 
+@router.callback_query(F.data == "admin:settings:payment")
+async def payment_settings(callback: CallbackQuery):
+    """Payment notification settings info."""
+    from bot.config import settings
+
+    group_id = settings.PAYMENT_GROUP_ID
+    topic_wallet = settings.PAYMENT_TOPIC_CARD2CARD_WALLET
+    topic_purchase = settings.PAYMENT_TOPIC_CARD2CARD_PURCHASE
+    topic_online = settings.PAYMENT_TOPIC_ONLINE
+
+    text = (
+        f"💳 <b>تنظیمات اعلان پرداخت</b>\n\n"
+        f"📍 گروه: <code>{group_id or 'غیرفعال'}</code>\n"
+        f"🏦 تاپیک شارژ کیف پول: <code>{topic_wallet or 'ندارد'}</code>\n"
+        f"🛒 تاپیک خرید مستقیم: <code>{topic_purchase or 'ندارد'}</code>\n"
+        f"💳 تاپیک درگاه آنلاین: <code>{topic_online or 'ندارد'}</code>\n\n"
+        f"⚙️ برای تغییر، فایل .env را ویرایش کنید:\n"
+        f"<code>PAYMENT_GROUP_ID=...</code>\n"
+        f"<code>PAYMENT_TOPIC_CARD2CARD_WALLET=...</code>\n"
+        f"<code>PAYMENT_TOPIC_CARD2CARD_PURCHASE=...</code>\n"
+        f"<code>PAYMENT_TOPIC_ONLINE=...</code>\n\n"
+        f"💡 بات باید ادمین گروه باشد.\n"
+        f"💡 برای فروم، شناسه تاپیک را وارد کنید."
+    )
+
+    from aiogram.types import InlineKeyboardButton
+    from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(text="🔙 بازگشت", callback_data="admin:menu"))
+
+    await callback.message.edit_text(text, reply_markup=builder.as_markup())
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith("admin:settings:"))
 async def settings_placeholder(callback: CallbackQuery):
     """Settings sub-menu placeholder."""

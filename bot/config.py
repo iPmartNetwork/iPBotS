@@ -82,6 +82,12 @@ class Settings(BaseSettings):
     # Locale
     DEFAULT_LANGUAGE: str = "fa"
 
+    # Payment Notification Group
+    PAYMENT_GROUP_ID: int = 0  # Group/channel ID for payment notifications
+    PAYMENT_TOPIC_CARD2CARD_WALLET: int = 0  # Topic ID for wallet card2card
+    PAYMENT_TOPIC_CARD2CARD_PURCHASE: int = 0  # Topic ID for direct purchase card2card
+    PAYMENT_TOPIC_ONLINE: int = 0  # Topic ID for online payment results
+
     # OpenAI (for AI support chatbot)
     OPENAI_API_KEY: str = ""
 
