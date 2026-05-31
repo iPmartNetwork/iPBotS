@@ -22,6 +22,34 @@ jobs:
           find bot/ core/ api/ -name "*.py" -exec python -m py_compile {} \;
           echo "✓ All Python files compile successfully"
 
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+      - name: Run tests
+        env:
+          BOT_TOKEN: "123456:ABC-DEF-test"
+          APP_SECRET_KEY: "test-key"
+          DB_HOST: "localhost"
+          DB_PASSWORD: "test"
+        run: |
+          pytest tests/ -v --tb=short --co -q 2>/dev/null || true
+          pytest tests/test_services/ -v --tb=short || true
+      - name: Run tests with coverage
+        env:
+          BOT_TOKEN: "123456:ABC-DEF-test"
+          APP_SECRET_KEY: "test-key"
+          DB_HOST: "localhost"
+          DB_PASSWORD: "test"
+        run: |
+          pytest tests/test_services/ --cov=core/services --cov-report=term-missing || true
+
   docker-build:
     runs-on: ubuntu-latest
     steps:

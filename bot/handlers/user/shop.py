@@ -96,8 +96,8 @@ async def show_plans(callback: CallbackQuery):
 
 
 @router.callback_query(F.data.startswith("shop:plan:"))
-async def show_plan_detail(callback: CallbackQuery):
-    """Show plan details."""
+async def show_plan_detail(callback: CallbackQuery, db_user: User):
+    """Show plan details with dynamic pricing."""
     plan_id = int(callback.data.split(":")[2])
 
     async with get_session() as session:
@@ -109,6 +109,11 @@ async def show_plan_detail(callback: CallbackQuery):
         await callback.answer("⚠️ پلن یافت نشد.", show_alert=True)
         return
 
+    # Apply dynamic pricing
+    from core.services.dynamic_pricing import dynamic_pricing
+
+    pricing = dynamic_pricing.calculate_discount(plan.final_price, db_user.total_purchases)
+
     detail_text = (
         f"📋 <b>{plan.name}</b>\n\n"
         f"📊 حجم: {plan.display_data}\n"
@@ -119,14 +124,26 @@ async def show_plan_detail(callback: CallbackQuery):
     if plan.speed_limit > 0:
         detail_text += f"⚡ سرعت: {plan.speed_limit} Mbps\n"
 
+    # Show pricing with dynamic discount
     if plan.discount_percent > 0:
         detail_text += (
             f"\n💰 قیمت اصلی: <s>{plan.price:,}</s> تومان\n"
-            f"🏷️ تخفیف: {plan.discount_percent}%\n"
-            f"✅ قیمت نهایی: <b>{plan.final_price:,}</b> تومان"
+            f"🏷️ تخفیف پلن: {plan.discount_percent}%\n"
         )
     else:
-        detail_text += f"\n💰 قیمت: <b>{plan.final_price:,}</b> تومان"
+        detail_text += f"\n💰 قیمت: "
+
+    if pricing["discount_percent"] > 0:
+        detail_text += (
+            f"<s>{plan.final_price:,}</s> تومان\n"
+            f"🔥 تخفیف لحظه‌ای: {pricing['discount_percent']}% ({pricing['reason']})\n"
+            f"✅ قیمت نهایی: <b>{pricing['final_price']:,}</b> تومان"
+        )
+    else:
+        if plan.discount_percent > 0:
+            detail_text += f"✅ قیمت نهایی: <b>{plan.final_price:,}</b> تومان"
+        else:
+            detail_text += f"<b>{plan.final_price:,}</b> تومان"
 
     if plan.description:
         detail_text += f"\n\n📝 {plan.description}"
@@ -420,6 +437,72 @@ async def pay_crypto_options(callback: CallbackQuery):
         "🪙 <b>پرداخت ارز دیجیتال</b>\n\nدرگاه مورد نظر را انتخاب کنید:",
         reply_markup=UserKeyboards.crypto_options(plan_id),
     )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("pay:stripe:"))
+async def pay_with_stripe(callback: CallbackQuery, db_user: User):
+    """Initiate Stripe payment (international)."""
+    plan_id = int(callback.data.split(":")[2])
+
+    async with get_session() as session:
+        plan = await session.get(Plan, plan_id)
+        if not plan:
+            await callback.answer("⚠️ پلن یافت نشد.", show_alert=True)
+            return
+
+        # Create pending order
+        order = Order(
+            user_id=db_user.id,
+            plan_id=plan_id,
+            order_type=OrderType.NEW,
+            status=OrderStatus.PENDING,
+            amount=plan.final_price,
+            original_amount=plan.price,
+            discount_amount=plan.price - plan.final_price,
+            payment_method="stripe",
+        )
+        session.add(order)
+        await session.flush()
+        order_id = order.id
+
+    # Convert to USD cents
+    from core.services.currency import currency_service
+    from core.services.payment.stripe_pay import StripeService
+
+    usd_price = currency_service.get_price_in_currency(plan.final_price, "USD")
+    usd_cents = int(usd_price * 100)
+
+    stripe_svc = StripeService()
+    result = await stripe_svc.create_payment(
+        amount=usd_cents,
+        description=f"VPN Plan: {plan.name}",
+        order_id=str(order_id),
+    )
+
+    if result.success:
+        from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+        kb = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="💳 Pay with Stripe", url=result.payment_url)],
+                [InlineKeyboardButton(text="🔙 انصراف", callback_data=f"order:cancel:{order_id}")],
+            ]
+        )
+        await callback.message.edit_text(
+            f"💳 <b>Stripe Payment</b>\n\n"
+            f"Plan: {plan.name}\n"
+            f"Amount: ${usd_price:.2f} USD\n"
+            f"Order: #{order_id}\n\n"
+            f"Click the button below to pay:",
+            reply_markup=kb,
+        )
+    else:
+        await callback.message.edit_text(
+            f"❌ Error creating payment.\n{result.error}\n\n"
+            f"💡 اگر Stripe فعال نیست، از روش‌های دیگر استفاده کنید."
+        )
+
     await callback.answer()
 
 

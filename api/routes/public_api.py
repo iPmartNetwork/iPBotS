@@ -1,7 +1,7 @@
 """Public Bot API for external integrations."""
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy import select, func
 
 from bot.config import settings
@@ -18,12 +18,14 @@ def verify_api_key(x_api_key: str = Header(None)):
 
 
 class StatsResponse(BaseModel):
+    """Bot statistics."""
     total_users: int
     active_subscriptions: int
     total_plans: int
 
 
 class UserResponse(BaseModel):
+    """User information."""
     telegram_id: int
     username: Optional[str]
     full_name: str
@@ -32,9 +34,19 @@ class UserResponse(BaseModel):
     is_banned: bool
 
 
-@router.get("/stats", response_model=StatsResponse)
+class PlanResponse(BaseModel):
+    """Plan information."""
+    id: int
+    name: str
+    data_gb: float
+    duration_days: int
+    price: int
+    final_price: int
+
+
+@router.get("/stats", response_model=StatsResponse, summary="Get bot statistics")
 async def get_stats(x_api_key: str = Header(None)):
-    """Get bot statistics."""
+    """Get overall bot statistics including user count, active subscriptions, and plans."""
     verify_api_key(x_api_key)
 
     async with get_session() as session:
@@ -53,9 +65,9 @@ async def get_stats(x_api_key: str = Header(None)):
     )
 
 
-@router.get("/user/{telegram_id}", response_model=UserResponse)
+@router.get("/user/{telegram_id}", response_model=UserResponse, summary="Get user by Telegram ID")
 async def get_user(telegram_id: int, x_api_key: str = Header(None)):
-    """Get user info by telegram ID."""
+    """Get user information by their Telegram ID."""
     verify_api_key(x_api_key)
 
     async with get_session() as session:
@@ -76,9 +88,9 @@ async def get_user(telegram_id: int, x_api_key: str = Header(None)):
     )
 
 
-@router.get("/plans")
+@router.get("/plans", response_model=List[PlanResponse], summary="Get active plans")
 async def get_plans(x_api_key: str = Header(None)):
-    """Get all active plans."""
+    """Get all active plans available for purchase."""
     verify_api_key(x_api_key)
 
     async with get_session() as session:
@@ -87,13 +99,13 @@ async def get_plans(x_api_key: str = Header(None)):
         plans = result.scalars().all()
 
     return [
-        {
-            "id": p.id,
-            "name": p.name,
-            "data_gb": p.data_limit_gb,
-            "duration_days": p.duration_days,
-            "price": p.price,
-            "final_price": p.final_price,
-        }
+        PlanResponse(
+            id=p.id,
+            name=p.name,
+            data_gb=p.data_limit_gb,
+            duration_days=p.duration_days,
+            price=p.price,
+            final_price=p.final_price,
+        )
         for p in plans
     ]

@@ -30,6 +30,7 @@ from core.database.models.bot_text import BotText
 from core.database.models.recurring import RecurringSubscription
 from core.database.models.dedicated_ip import DedicatedIP
 from core.database.models.credit import UserCredit
+from core.database.models.ab_test import ABTest
 
 __all__ = [
     "Base",
@@ -77,4 +78,5 @@ __all__ = [
     "RecurringSubscription",
     "DedicatedIP",
     "UserCredit",
+    "ABTest",
 ]

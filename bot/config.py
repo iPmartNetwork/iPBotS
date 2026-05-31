@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     CRYPTOMUS_API_KEY: str = ""
     CRYPTOMUS_CALLBACK_URL: str = ""
 
+    # Stripe
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_CALLBACK_URL: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+
     # IDPay
     IDPAY_API_KEY: str = ""
     IDPAY_SANDBOX: bool = False

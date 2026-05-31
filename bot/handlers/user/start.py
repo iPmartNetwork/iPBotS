@@ -40,6 +40,12 @@ async def cmd_start(message: Message, db_user: User, state: FSMContext):
                         return
                 except (ValueError, Exception):
                     pass
+            elif param == "webapp":
+                # Deep link from Mini App - show main menu with webapp button
+                from core.services.bot_texts import get_text
+                welcome_text = await get_text("welcome", name=db_user.full_name)
+                await message.answer(welcome_text, reply_markup=UserKeyboards.main_menu())
+                return
 
     from core.services.bot_texts import get_text
     welcome_text = await get_text("welcome", name=db_user.full_name)

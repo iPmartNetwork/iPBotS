@@ -2,6 +2,72 @@
 
 All notable changes to iPBotS will be documented in this file.
 
+## [2.0.0] - 2026-05-31
+
+### 🚀 Major Release — Full Feature Completion
+
+### ✨ New Features
+- **Admin Web Panel (React)** — Full management dashboard at `/admin`
+  - Login with API Key
+  - Dashboard with real-time stats (users, revenue, servers)
+  - User management (list, search, ban/unban)
+  - Plan management (list, create, edit)
+  - Server status monitoring
+  - Payment history viewer
+- **Stripe Payment Handler** — Complete bot integration with currency conversion
+- **A/B Testing Admin** — Create, manage, view results of A/B tests
+- **Dynamic Pricing Admin** — Configure discount parameters from bot
+- **Dynamic Pricing in Shop** — Real-time discounts shown to users during purchase
+- **Mini App Order System** — Full purchase flow from Telegram Mini App
+  - Create order, pay (wallet/zarinpal/stripe/crypto), check status
+  - Wallet charge from Mini App
+- **Payment Notifications** — Bot sends confirmation after successful payment
+- **WebApp Button** — Mini App accessible from main menu keyboard
+
+### 🔧 Integrations & Wiring
+- Registered missing handlers: `leaderboard`, `test_connection`, `review`
+- Registered `public_api` router in FastAPI app
+- Exported `StripeService` in payment module
+- Added Stripe/IDPay callback endpoints
+- Added Admin API endpoints (`/api/admin/*`)
+
+### 📚 API & Documentation
+- **Swagger UI** enabled at `/docs`
+- **ReDoc** enabled at `/redoc`
+- OpenAPI security scheme (API Key header)
+- Pydantic response models for all endpoints
+- Full endpoint descriptions and summaries
+
+### 🧪 Testing
+- pytest + pytest-asyncio + pytest-cov infrastructure
+- Unit tests for: DynamicPricing, Currency, A/B Testing, ChurnPrediction
+- Payment tests: Stripe, ZarinPal (with aioresponses mocking)
+- API tests: health check, public API auth
+- CI pipeline updated with test + coverage steps
+
+### 🗄️ Database
+- New model: `ABTest` (proper location in models/)
+- New field: `User.preferred_currency`
+- New enum values: `PaymentMethod.STRIPE`, `PaymentMethod.IDPAY`
+- Alembic migration `002_ab_test_currency`
+
+### 🐳 DevOps
+- Dockerfile updated: multi-stage with Node.js for admin panel build
+- `.dockerignore` updated for `node_modules`
+- `.gitignore` updated for admin panel artifacts
+- CI: pytest + coverage reporting added
+
+### 🐛 Bug Fixes
+- Fixed duplicate ABTest model (service vs models conflict)
+- Fixed PaymentMethod enum missing stripe/idpay
+- Fixed `p.method` in admin API (enum .value access)
+- Fixed Order creation missing `original_amount`
+- Fixed Dockerfile build order (COPY overwriting dist)
+- Fixed webapp static mount crash when directory missing
+- Fixed RTL sidebar positioning in admin panel
+
+---
+
 ## [1.5.0] - 2026-05-30
 
 ### ✨ Level 3 — User Experience

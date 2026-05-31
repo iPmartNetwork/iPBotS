@@ -18,6 +18,7 @@ from bot.handlers.user.traffic_stats import router as traffic_stats_router
 from bot.handlers.user.tutorial import router as tutorial_router
 from bot.handlers.user.bundle import router as bundle_router
 from bot.handlers.user.ai_chat import router as ai_chat_router
+from bot.handlers.user.review import router as review_router
 
 
 def register_user_handlers(dp: Dispatcher):
@@ -38,3 +39,4 @@ def register_user_handlers(dp: Dispatcher):
     dp.include_router(tutorial_router)
     dp.include_router(bundle_router)
     dp.include_router(ai_chat_router)
+    dp.include_router(review_router)

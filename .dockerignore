@@ -11,3 +11,6 @@ __pycache__
 *.pyc
 *.pyo
 .pytest_cache
+admin-panel/node_modules
+admin-panel/dist
+.kiro

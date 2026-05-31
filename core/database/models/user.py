@@ -41,6 +41,9 @@ class User(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Preferences
+    preferred_currency: Mapped[str] = mapped_column(String(5), default="IRT")
+
     # Relationships
     referred_by: Mapped[Optional["User"]] = relationship(
         "User", remote_side="User.id", backref="referrals"

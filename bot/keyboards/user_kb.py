@@ -7,6 +7,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
     KeyboardButton,
+    WebAppInfo,
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
@@ -17,6 +18,8 @@ class UserKeyboards:
     @staticmethod
     def main_menu() -> ReplyKeyboardMarkup:
         """Main menu keyboard."""
+        from bot.config import settings
+
         builder = ReplyKeyboardBuilder()
         builder.row(
             KeyboardButton(text="🛒 خرید سرویس"),
@@ -37,6 +40,17 @@ class UserKeyboards:
         builder.row(
             KeyboardButton(text="📖 آموزش اتصال"),
         )
+
+        # Add Mini App button if webhook host is configured
+        if settings.WEBHOOK_HOST:
+            webapp_url = f"{settings.WEBHOOK_HOST}/webapp"
+            builder.row(
+                KeyboardButton(
+                    text="🌐 فروشگاه وب",
+                    web_app=WebAppInfo(url=webapp_url),
+                ),
+            )
+
         return builder.as_markup(resize_keyboard=True)
 
     @staticmethod
@@ -106,6 +120,12 @@ class UserKeyboards:
             InlineKeyboardButton(
                 text="💰 پرداخت از کیف پول",
                 callback_data=f"pay:wallet:{plan_id}",
+            )
+        )
+        builder.row(
+            InlineKeyboardButton(
+                text="💳 Stripe (بین‌المللی)",
+                callback_data=f"pay:stripe:{plan_id}",
             )
         )
         builder.row(

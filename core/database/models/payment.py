@@ -28,6 +28,8 @@ class PaymentMethod(str, enum.Enum):
     CARD2CARD = "card2card"
     WALLET = "wallet"
     ADMIN = "admin"  # Manual by admin
+    STRIPE = "stripe"
+    IDPAY = "idpay"
 
 
 class Payment(Base):

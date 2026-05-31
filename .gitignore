@@ -36,3 +36,8 @@ Thumbs.db
 
 # Docker
 docker-compose.override.yml
+
+# Admin Panel
+admin-panel/node_modules/
+admin-panel/dist/
+static/admin/

@@ -12,6 +12,10 @@ from bot.handlers.admin.settings import router as settings_router
 from bot.handlers.admin.export import router as export_router
 from bot.handlers.admin.texts import router as texts_router
 from bot.handlers.admin.group_payments import router as group_payments_router
+from bot.handlers.admin.leaderboard import router as leaderboard_router
+from bot.handlers.admin.test_connection import router as test_connection_router
+from bot.handlers.admin.ab_testing import router as ab_testing_router
+from bot.handlers.admin.dynamic_pricing import router as dynamic_pricing_router
 
 
 def register_admin_handlers(dp: Dispatcher):
@@ -26,3 +30,7 @@ def register_admin_handlers(dp: Dispatcher):
     dp.include_router(settings_router)
     dp.include_router(export_router)
     dp.include_router(texts_router)
+    dp.include_router(leaderboard_router)
+    dp.include_router(test_connection_router)
+    dp.include_router(ab_testing_router)
+    dp.include_router(dynamic_pricing_router)
