@@ -94,6 +94,10 @@ class Settings(BaseSettings):
     # Cloudflare Worker
     CF_WORKER_URL: str = ""  # e.g. https://ipbots-sub.workers.dev
 
+    # External Webhooks
+    EXTERNAL_WEBHOOK_URL: str = ""  # Generic webhook (Zapier, n8n)
+    DISCORD_WEBHOOK_URL: str = ""  # Discord webhook
+
     # Sentry
     SENTRY_DSN: str = ""
 
