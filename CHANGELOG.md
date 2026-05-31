@@ -2,6 +2,24 @@
 
 All notable changes to iPBotS will be documented in this file.
 
+## [1.5.0] - 2026-05-30
+
+### ✨ Level 3 — User Experience
+- **Review/Rating system** - Users rate service after purchase (1-5 stars + comment)
+- **Reseller Leaderboard** - Rank resellers by revenue/sales/clients
+- **External Webhooks** - Send events to Discord/Zapier/n8n
+- **3 New Languages** - Arabic, Turkish, Russian (5 languages total)
+
+### 🤖 Level 4 — Intelligence & Automation
+- **Dynamic Pricing** - Auto-discount during off-peak hours/days + loyalty
+- **Churn Prediction** - Risk scoring (0-100) with factors analysis
+- **A/B Testing** - Deterministic variant assignment + conversion tracking
+- **Public Bot API** - REST API with auth (`/api/v1/stats`, `/api/v1/user`, `/api/v1/plans`)
+
+### 🌐 Level 5 — International
+- **Stripe Payment** - International card payments (USD)
+- **Multi-Currency** - Convert between IRT/USD/EUR/TRY/RUB/AED with live rates
+
 ## [1.4.0] - 2026-05-30
 
 ### ✨ Level 1 — Revenue Features
