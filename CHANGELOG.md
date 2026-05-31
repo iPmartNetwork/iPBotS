@@ -2,6 +2,21 @@
 
 All notable changes to iPBotS will be documented in this file.
 
+## [1.4.0] - 2026-05-30
+
+### ✨ Level 1 — Revenue Features
+- **Cloudflare Worker** - Sub link proxy for anti-filtering
+- **Recurring Subscription** - Auto-payment model (monthly/custom interval)
+- **Dedicated IP** - Sell static IPs to users
+- **Credit System** - Buy now, pay later model
+- **CF_WORKER_URL** config for automatic proxied links
+
+### 🛡️ Level 2 — Stability Features
+- **GitHub Actions CI/CD** - Lint + Docker build on every push
+- **Sentry Integration** - Automatic error tracking in production
+- **Migration Helper** - `scripts/migrate.sh` for DB migrations
+- 3 new database models (26 total)
+
 ## [1.3.0-rc2] - 2026-05-30
 
 ### 🐛 Critical Bug Fixes (Comprehensive Audit)
