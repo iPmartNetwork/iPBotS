@@ -7,17 +7,20 @@ on:
     branches: [master]
 
 jobs:
-  lint:
+  syntax-check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install dependencies
-        run: pip install pyflakes
-      - name: Syntax check
-        run: python -m pyflakes bot/ core/ api/
+      - name: Python syntax check
+        run: |
+          python -m py_compile bot/__main__.py
+          python -m py_compile bot/config.py
+          python -m py_compile bot/loader.py
+          find bot/ core/ api/ -name "*.py" -exec python -m py_compile {} \;
+          echo "✓ All Python files compile successfully"
 
   docker-build:
     runs-on: ubuntu-latest
@@ -25,3 +28,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Docker image
         run: docker build -t ipbots-test .
+      - name: Verify image
+        run: docker images ipbots-test

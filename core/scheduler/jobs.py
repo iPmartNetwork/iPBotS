@@ -13,7 +13,7 @@ async def check_expired_subscriptions():
     """Check and disable expired subscriptions."""
     from core.database.engine import get_session
     from core.database.models import Subscription, SubscriptionStatus
-    from sqlalchemy import select, update
+    from sqlalchemy import select
     from datetime import datetime, timezone
 
     logger.info("Checking expired subscriptions...")
