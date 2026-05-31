@@ -27,6 +27,9 @@ from core.database.models.forced_join import ForcedChannel
 from core.database.models.scheduled_message import ScheduledMessage
 from core.database.models.protocol_config import ProtocolConfig
 from core.database.models.bot_text import BotText
+from core.database.models.recurring import RecurringSubscription
+from core.database.models.dedicated_ip import DedicatedIP
+from core.database.models.credit import UserCredit
 
 __all__ = [
     "Base",
@@ -71,4 +74,7 @@ __all__ = [
     "ScheduledMessage",
     "ProtocolConfig",
     "BotText",
+    "RecurringSubscription",
+    "DedicatedIP",
+    "UserCredit",
 ]

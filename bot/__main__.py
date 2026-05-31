@@ -57,6 +57,11 @@ async def on_shutdown():
 
 async def main():
     """Main function."""
+    # Initialize Sentry if configured
+    if settings.SENTRY_DSN:
+        import sentry_sdk
+        sentry_sdk.init(dsn=settings.SENTRY_DSN, traces_sample_rate=0.1)
+
     # Configure logging
     logger.remove()
     logger.add(

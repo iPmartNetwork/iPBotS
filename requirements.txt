@@ -26,3 +26,6 @@ python-dateutil==2.9.0
 
 # Logging
 loguru==0.7.3
+
+# Error Tracking
+sentry-sdk==2.19.0

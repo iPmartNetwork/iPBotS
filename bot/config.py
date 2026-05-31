@@ -91,6 +91,12 @@ class Settings(BaseSettings):
     # OpenAI (for AI support chatbot)
     OPENAI_API_KEY: str = ""
 
+    # Cloudflare Worker
+    CF_WORKER_URL: str = ""  # e.g. https://ipbots-sub.workers.dev
+
+    # Sentry
+    SENTRY_DSN: str = ""
+
     @property
     def database_url(self) -> str:
         return (
