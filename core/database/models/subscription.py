@@ -58,6 +58,13 @@ class Subscription(Base):
     used_traffic_bytes: Mapped[int] = mapped_column(BigInteger, default=0)
     ip_limit: Mapped[int] = mapped_column(Integer, default=1)
 
+    # Notification tracking
+    notified_80: Mapped[bool] = mapped_column(Boolean, default=False)
+    notified_95: Mapped[bool] = mapped_column(Boolean, default=False)
+    notified_100: Mapped[bool] = mapped_column(Boolean, default=False)
+    notified_3days: Mapped[bool] = mapped_column(Boolean, default=False)
+    notified_1day: Mapped[bool] = mapped_column(Boolean, default=False)
+
     # Duration
     start_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     expire_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))

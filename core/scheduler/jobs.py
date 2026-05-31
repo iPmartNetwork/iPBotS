@@ -42,9 +42,9 @@ async def check_expired_subscriptions():
 
 
 async def check_traffic_limits():
-    """Check subscriptions that exceeded traffic limit."""
+    """Check subscriptions that exceeded traffic limit + send warnings."""
     from core.database.engine import get_session
-    from core.database.models import Subscription, SubscriptionStatus
+    from core.database.models import Subscription, SubscriptionStatus, User
     from sqlalchemy import select
 
     logger.info("Checking traffic limits...")
@@ -58,11 +58,66 @@ async def check_traffic_limits():
         result = await session.execute(stmt)
         subs = result.scalars().all()
 
+        from bot.loader import bot
+
         for sub in subs:
+            percent = sub.traffic_percent
+
+            # 100% - disable service
             if sub.used_traffic_bytes >= sub.data_limit_bytes:
                 sub.status = SubscriptionStatus.TRAFFIC_ENDED
                 sub.is_active = False
                 logger.info(f"Subscription {sub.id} traffic ended for user {sub.user_id}")
+
+                if not sub.notified_100:
+                    user = await session.get(User, sub.user_id)
+                    if user:
+                        try:
+                            await bot.send_message(
+                                user.telegram_id,
+                                f"🔴 <b>ترافیک تمام شد!</b>\n\n"
+                                f"حجم سرویس شما به پایان رسیده.\n"
+                                f"📊 مصرف: {sub.used_traffic_gb}/{sub.data_limit_gb} GB\n\n"
+                                f"💡 برای ادامه استفاده، سرویس جدید بخرید یا ارتقا دهید."
+                            )
+                        except Exception:
+                            pass
+                    sub.notified_100 = True
+
+            # 95% warning
+            elif percent >= 95 and not sub.notified_95:
+                user = await session.get(User, sub.user_id)
+                if user:
+                    try:
+                        await bot.send_message(
+                            user.telegram_id,
+                            f"🟠 <b>هشدار ترافیک (95%)</b>\n\n"
+                            f"📊 مصرف: {sub.used_traffic_gb}/{sub.data_limit_gb} GB\n"
+                            f"📉 باقیمانده: {sub.remaining_traffic_gb} GB\n\n"
+                            f"⚠️ سرویس شما به زودی تمام می‌شود!\n"
+                            f"💡 همین الان ارتقا دهید."
+                        )
+                    except Exception:
+                        pass
+                sub.notified_95 = True
+
+            # 80% warning
+            elif percent >= 80 and not sub.notified_80:
+                user = await session.get(User, sub.user_id)
+                if user:
+                    try:
+                        await bot.send_message(
+                            user.telegram_id,
+                            f"⚠️ <b>هشدار ترافیک (80%)</b>\n\n"
+                            f"📊 مصرف: {sub.used_traffic_gb}/{sub.data_limit_gb} GB\n"
+                            f"📉 باقیمانده: {sub.remaining_traffic_gb} GB\n\n"
+                            f"💡 برای جلوگیری از قطع، ارتقا دهید یا سرویس جدید بخرید."
+                        )
+                    except Exception:
+                        pass
+                sub.notified_80 = True
+
+    logger.info("Traffic check completed.")
 
 
 async def sync_traffic_from_panels():
@@ -120,7 +175,7 @@ async def sync_traffic_from_panels():
 
 
 async def send_expiry_notifications():
-    """Send notifications for subscriptions expiring soon."""
+    """Send notifications for subscriptions expiring soon (3 days + 1 day)."""
     from core.database.engine import get_session
     from core.database.models import Subscription, SubscriptionStatus, User
     from sqlalchemy import select
@@ -131,30 +186,63 @@ async def send_expiry_notifications():
     async with get_session() as session:
         now = datetime.now(timezone.utc)
 
-        # Notify 3 days before expiry
-        notify_before = now + timedelta(days=3)
-
+        # Get active subscriptions
         stmt = (
             select(Subscription)
             .where(Subscription.status == SubscriptionStatus.ACTIVE)
-            .where(Subscription.expire_date <= notify_before)
             .where(Subscription.expire_date > now)
         )
         result = await session.execute(stmt)
-        expiring = result.scalars().all()
+        subs = result.scalars().all()
 
         from bot.loader import bot
-        from core.services.notification import NotificationService
 
-        notifier = NotificationService(bot)
-        for sub in expiring:
+        sent_count = 0
+        for sub in subs:
             days_left = (sub.expire_date - now).days
-            # Get user's telegram_id
-            user = await session.get(User, sub.user_id)
-            if user:
-                await notifier.notify_subscription_expiring(user.telegram_id, days_left)
 
-    logger.info(f"Sent {len(expiring)} expiry notifications.")
+            # 3 days warning
+            if days_left <= 3 and not sub.notified_3days:
+                user = await session.get(User, sub.user_id)
+                if user:
+                    try:
+                        plan_name = ""
+                        if sub.plan_id:
+                            from core.database.models import Plan
+                            plan = await session.get(Plan, sub.plan_id)
+                            plan_name = plan.name if plan else ""
+
+                        await bot.send_message(
+                            user.telegram_id,
+                            f"⚠️ <b>هشدار انقضا</b>\n\n"
+                            f"📋 سرویس: {plan_name or 'نامشخص'}\n"
+                            f"⏱️ باقیمانده: <b>{days_left} روز</b>\n\n"
+                            f"💡 برای تمدید از منوی «سرویس‌های من» اقدام کنید.\n"
+                            f"🔁 یا تمدید خودکار را فعال کنید."
+                        )
+                        sub.notified_3days = True
+                        sent_count += 1
+                    except Exception:
+                        pass
+
+            # 1 day warning
+            if days_left <= 1 and not sub.notified_1day:
+                user = await session.get(User, sub.user_id)
+                if user:
+                    try:
+                        await bot.send_message(
+                            user.telegram_id,
+                            f"🔴 <b>هشدار فوری!</b>\n\n"
+                            f"سرویس شما <b>فردا</b> منقضی می‌شود!\n\n"
+                            f"⏰ کمتر از 24 ساعت باقیمانده.\n"
+                            f"💡 همین الان تمدید کنید تا قطع نشوید."
+                        )
+                        sub.notified_1day = True
+                        sent_count += 1
+                    except Exception:
+                        pass
+
+    logger.info(f"Sent {sent_count} expiry notifications.")
 
 
 async def process_auto_renewals():
